@@ -1,0 +1,161 @@
+table {
+    width: 70%;
+    border-collapse: collapse;
+    background: #fff;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  }
+
+  th, td {
+    border: 1px solid #000;
+    padding: 10px;
+    text-align: center;
+  }
+
+  th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+  .action-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .action-table td {
+    border: 1px solid #000;
+    padding: 6px 8px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .action-table td.download { color: #007bff; }
+  .action-table td.edit { color: #28a745; }
+  .action-table td.delete { color: red; }
+
+  .tamplatetable{
+    text-decoration: none;
+  }
+
+
+
+  /*resultanalysiS*/
+
+body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+    background-color: white;
+}
+.navbar{
+    height: 200px;
+    width: 100%;
+    background-color: black;
+}
+.navbar img{
+   height: auto;
+   width: 100%;
+}
+
+.data{
+    height: 100px;
+    width: 100%;
+    text-align: center;
+}
+h2{
+    padding-left: 200px;
+}
+
+.uploadfile{
+    height: 50px;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+
+.file1{
+    width: 300px;
+    font-size: 20px;
+    font-weight: 500;
+    background-color: #007bff;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+}
+
+.uploadfile input[type="file"] {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.analysisBtns{
+  height: 100px;
+  width: 900px;
+  text-align: center;
+  border: none;
+  display: flex;
+    justify-content: space-around;
+    align-items: center;
+  margin-left: 350px;
+
+  gap: 20px;
+}
+
+#analyzeBtn{
+    height: 50px;
+    width: 200px;
+    font-size: 20px;
+    font-weight: 500;
+    background-color: blue;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+#exportBtn{
+    height: 50px;
+    width: 200px;
+    font-size: 20px;
+    font-weight: 500;
+    background-color: blue;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+#saveBtn{
+    height: 50px;
+    width: 200px;
+    font-size: 20px;
+    font-weight: 500;
+    background-color: blue;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.footerdiv {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background-color: #222;
+  color: white;
+  text-align: center;
+  padding: 10px;
+}
+
+
+footer {
+      width: 100%;
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 15px 10px;
+      font-size: 14px;
+      line-height: 1.5;
+    }

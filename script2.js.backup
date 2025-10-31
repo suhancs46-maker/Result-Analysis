@@ -1,0 +1,434 @@
+// ============================
+// script2.js
+// ============================
+
+// Global variables
+let excelData = [];
+let resultChartInstance = null;
+let selectedFile = null; // file chosen by user for server upload
+
+// Wait until DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+    const fileInput = document.getElementById("fileInput");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+
+    if (fileInput) fileInput.addEventListener("change", handleFile, false);
+    if (analyzeBtn) analyzeBtn.addEventListener("click", analyzeData);
+});
+
+// ============================
+// Read Excel File
+// ============================
+function handleFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+        alert('Please select a valid Excel file (.xlsx or .xls)');
+        event.target.value = ''; // Reset the input
+        return;
+    }
+
+    // store file for server upload and also keep a small client-side confirmation
+    selectedFile = file;
+    excelData = []; // clear any previous client-side parsed data
+    console.log('Selected file for upload:', file.name, 'Type:', file.type, 'Size:', file.size, 'bytes');
+
+    const infoEl = document.createElement('div');
+    infoEl.style.position = 'fixed';
+    infoEl.style.right = '16px';
+    infoEl.style.bottom = '16px';
+    infoEl.style.background = '#0b8';
+    infoEl.style.color = '#023';
+    infoEl.style.padding = '8px 12px';
+    infoEl.style.borderRadius = '6px';
+    infoEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+    infoEl.textContent = `Selected ${file.name} — click Analyze to upload to server`;
+    document.body.appendChild(infoEl);
+    // Keep info message visible without auto-removal to prevent blinking
+}
+
+// ============================
+// Analyze Excel Data
+// ============================
+function analyzeData() {
+    // Check if file is selected
+    const fileInput = document.getElementById("fileInput");
+    const file = fileInput?.files?.[0] || selectedFile;
+    
+    if (!file) {
+        alert("Please select an Excel file first!");
+        return;
+    }
+    
+    console.log('Starting analysis for file:', file.name, 'Type:', file.type, 'Size:', file.size);
+    
+    // Show loading indicator
+    showLoadingIndicator();
+    
+    const form = new FormData();
+    form.append('file', file);
+    
+    // Update selectedFile to ensure consistency
+    selectedFile = file;
+
+        // Try a list of possible upload endpoints to support both server variants and different origins
+        const endpoints = [
+            '/api/upload',
+            '/upload',
+            'http://localhost:3000/api/upload',
+            'http://localhost:3000/upload',
+            'http://127.0.0.1:3000/api/upload',
+            'http://127.0.0.1:3000/upload'
+        ];
+
+        const tryUpload = async (i = 0) => {
+            if (i >= endpoints.length) {
+                hideLoadingIndicator();
+                alert('Upload failed: no working upload endpoint found');
+                return;
+            }
+            const url = endpoints[i];
+            console.log(`Attempting upload to: ${url} (current page: ${window.location.origin})`);
+            console.log('FormData contains:', form.has('file') ? 'File present' : 'No file found');
+            try {
+                const resp = await fetch(url, { 
+                    method: 'POST', 
+                    body: form,
+                    // Don't set Content-Type header - let browser set it for multipart/form-data
+                });
+                if (resp.status === 405) {
+                    console.warn(`${url} returned 405 (Method Not Allowed), trying next endpoint`);
+                    return tryUpload(i + 1);
+                }
+                if (!resp.ok) {
+                    const txt = await resp.text();
+                    throw new Error(`Server ${url} returned ${resp.status}: ${txt}`);
+                }
+                const data = await resp.json();
+                hideLoadingIndicator();
+                console.log('Analysis response:', data);
+                
+                // Ensure data is valid before rendering
+                if (data && data.summary && data.subjects) {
+                    return renderAnalysisFromServer(data);
+                } else {
+                    alert('Received invalid data from server');
+                }
+            } catch (err) {
+                console.error(`Upload to ${url} failed:`, err);
+                return tryUpload(i + 1);
+            }
+        };
+
+        tryUpload();
+        return;
+
+    const headers = Object.keys(excelData[0] || {});
+    const subjects = headers.length > 1 ? headers.slice(1) : [];
+    const subjectAverages = [];
+
+    subjects.forEach((subject) => {
+        const marks = excelData.map((row) => {
+            const v = row[subject];
+            const n = parseFloat(v ?? 0);
+            return Number.isFinite(n) ? n : 0;
+        });
+        subjectAverages.push(average(marks));
+    });
+
+    const allMarks = excelData.flatMap((row) =>
+        subjects.map((s) => {
+            const v = row[s];
+            const n = parseFloat(v ?? 0);
+            return Number.isFinite(n) ? n : 0;
+        })
+    );
+
+    const overallAvg = allMarks.length ? average(allMarks).toFixed(2) : "0.00";
+    const overallHigh = allMarks.length ? Math.max(...allMarks) : 0;
+    const overallLow = allMarks.length ? Math.min(...allMarks) : 0;
+    const passCount = allMarks.filter((m) => m >= 35).length;
+    const passPercent = allMarks.length
+        ? ((passCount / allMarks.length) * 100).toFixed(2)
+        : "0.00";
+
+    // ============================
+    // Update Result Summary
+    // ============================
+    const resultDiv = document.querySelector(".resultAnalysis");
+    resultDiv.innerHTML = `
+        <div class="summary-box">
+            <h3>Result Summary</h3>
+            <p><b>Overall Average Marks:</b> ${overallAvg}</p>
+            <p><b>Highest Marks:</b> ${overallHigh}</p>
+            <p><b>Lowest Marks:</b> ${overallLow}</p>
+            <p><b>Pass Percentage:</b> ${passPercent}%</p>
+        </div>
+
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Total Marks</th>
+                    <th>Average Marks</th>
+                    <th>Percentage</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <canvas id="resultChart" width="400" height="200"></canvas>
+    `;
+
+    const tbody = document.querySelector("#resultTable tbody");
+    subjects.forEach((subj, i) => {
+        const percent = subjectAverages[i].toFixed(2);
+        const grade =
+            percent >= 90
+                ? "A+"
+                : percent >= 80
+                ? "A"
+                : percent >= 70
+                ? "B"
+                : percent >= 60
+                ? "C"
+                : "F";
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${subj}</td>
+                <td>100</td>
+                <td>${percent}</td>
+                <td>${percent}%</td>
+                <td>${grade}</td>
+            </tr>
+        `;
+    });
+
+    // ============================
+    // Chart Section
+    // ============================
+    const ctxEl = document.getElementById("resultChart");
+    if (ctxEl && window.Chart) {
+        if (resultChartInstance) {
+            try {
+                resultChartInstance.destroy();
+            } catch (e) {}
+            resultChartInstance = null;
+        }
+
+        const ctx = ctxEl.getContext("2d");
+        resultChartInstance = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: subjects,
+                datasets: [
+                    {
+                        label: "Average Marks",
+                        data: subjectAverages,
+                        backgroundColor: "#0078D7",
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                    },
+                },
+            },
+        });
+    }
+}
+
+// ============================
+// Helper Functions
+// ============================
+function average(arr) {
+    if (!arr || arr.length === 0) return 0;
+    return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+function showLoadingIndicator() {
+    const resultDiv = document.querySelector('.resultAnalysis');
+    resultDiv.innerHTML = `
+        <div class="loading-container" style="text-align: center; padding: 60px; background: white; position: static;">
+            <div style="border: 4px solid #f3f3f3; border-top: 4px solid #0078D7; border-radius: 50%; width: 50px; height: 50px; margin: 0 auto;"></div>
+            <h3 style="color: #0078D7; margin-top: 20px;">🔄 Processing...</h3>
+            <p style="color: #666;">Analyzing your file</p>
+        </div>
+    `;
+}
+
+function hideLoadingIndicator() {
+    // Simple function - no dynamic style removal needed
+}
+
+function renderAnalysisFromServer(data) {
+    if (!data || !data.success) {
+        alert('No data received from server or analysis failed');
+        console.error('Invalid data:', data);
+        return;
+    }
+    
+    console.log('Rendering comprehensive analysis data:', data);
+    
+    // Handle different response formats
+    let summary, subjects, downloadUrl;
+    
+    if (data.summary && data.subjects) {
+        // New format from updated server
+        summary = data.summary;
+        subjects = data.subjects;
+        downloadUrl = data.download;
+    } else if (data.status === 'success') {
+        // Old format - convert to new format
+        summary = {
+            overallAvg: data.averageMarks || 0,
+            overallHigh: 0, // not available in old format
+            overallLow: 0,  // not available in old format
+            passPercent: 0  // not available in old format
+        };
+        subjects = []; // would need to be calculated from data.data
+    } else {
+        alert('Invalid response format from server');
+        return;
+    }
+
+    const resultDiv = document.querySelector('.resultAnalysis');
+    
+    // Ensure the div is properly displayed without reset conflicts
+    resultDiv.style.display = 'block';
+    resultDiv.style.position = 'static';
+    resultDiv.style.visibility = 'visible';
+    resultDiv.style.opacity = '1';
+    
+    // Build the HTML content step by step to avoid any rendering issues
+    const summaryHTML = `
+        <div class="analysis-results" style="margin-top: 20px; padding: 20px;">
+            <div class="summary-section" style="margin-bottom: 30px;">
+                <h3 style="color: #0078D7; margin-bottom: 15px;">📊 Result Summary</h3>
+                <div class="summary-cards" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+                    <div class="card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; min-width: 150px;">
+                        <h4 style="margin: 0; color: #666;">Average Marks</h4>
+                        <p style="font-size: 24px; font-weight: bold; color: #0078D7; margin: 10px 0;">${summary.overallAvg || 0}</p>
+                    </div>
+                    <div class="card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; min-width: 150px;">
+                        <h4 style="margin: 0; color: #666;">Highest Marks</h4>
+                        <p style="font-size: 24px; font-weight: bold; color: #0078D7; margin: 10px 0;">${summary.overallHigh || 0}</p>
+                    </div>
+                    <div class="card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; min-width: 150px;">
+                        <h4 style="margin: 0; color: #666;">Lowest Marks</h4>
+                        <p style="font-size: 24px; font-weight: bold; color: #0078D7; margin: 10px 0;">${summary.overallLow || 0}</p>
+                    </div>
+                    <div class="card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; min-width: 150px;">
+                        <h4 style="margin: 0; color: #666;">Pass Percentage</h4>
+                        <p style="font-size: 24px; font-weight: bold; color: #0078D7; margin: 10px 0;">${summary.passPercent || 0}%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-section" style="margin-bottom: 30px;">
+                <h3 style="color: #0078D7; margin-bottom: 15px;">📚 Subject-wise Analysis</h3>
+                <table id="resultTable" style="width: 100%; border-collapse: collapse; margin: 0 auto;">
+                    <thead>
+                        <tr style="background: #0078D7; color: white;">
+                            <th style="padding: 12px; border: 1px solid #ddd;">Subject</th>
+                            <th style="padding: 12px; border: 1px solid #ddd;">Average Marks</th>
+                            <th style="padding: 12px; border: 1px solid #ddd;">Percentage</th>
+                            <th style="padding: 12px; border: 1px solid #ddd;">Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="chart-section" style="margin-bottom: 30px;">
+                <h3 style="color: #0078D7; margin-bottom: 15px;">📈 Performance Chart</h3>
+                <canvas id="resultChart" style="max-width: 100%; height: 400px;"></canvas>
+            </div>
+            
+            ${downloadUrl ? `<div class="download-section" style="text-align: center; margin-top: 20px;">
+                <h3 style="color: #0078D7; margin-bottom: 15px;">📥 Download Results</h3>
+                <a href="${downloadUrl}" download style="display: inline-block; padding: 12px 24px; background: #28a745; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Download Excel with Analysis</a>
+            </div>` : ''}
+        </div>
+    `;
+    
+    resultDiv.innerHTML = summaryHTML;
+
+    // Keep content stable without scrolling or style manipulation
+    resultDiv.style.cssText = 'display: block; position: static; visibility: visible; opacity: 1; margin-top: 20px;';
+    
+    // Ensure content remains visible and prevent any disappearing
+    setTimeout(() => {
+        resultDiv.style.display = 'block';
+        resultDiv.style.visibility = 'visible';
+        resultDiv.style.opacity = '1';
+    }, 100);
+
+    const tbody = document.querySelector('#resultTable tbody');
+    const labels = [];
+    const dataPoints = [];
+    
+    if (subjects && subjects.length > 0) {
+        subjects.forEach((s, index) => {
+            const avg = Number(s.average || 0).toFixed(2);
+            const grade = avg >= 90 ? 'A+' : avg >= 80 ? 'A' : avg >= 70 ? 'B' : avg >= 60 ? 'C' : 'F';
+            
+            // Add row with inline styles to prevent CSS conflicts
+            const row = tbody.insertRow();
+            row.style.cssText = 'background: white; position: static; display: table-row;';
+            row.innerHTML = `
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${s.subject}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${avg}</td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${avg}%</td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: center; font-weight: bold;">${grade}</td>
+            `;
+            
+            labels.push(s.subject);
+            dataPoints.push(Number(s.average || 0));
+        });
+    }
+
+    // Render chart immediately
+    const ctxEl = document.getElementById('resultChart');
+    if (ctxEl && window.Chart && labels.length > 0) {
+        if (resultChartInstance) {
+            try { resultChartInstance.destroy(); } catch(e) {}
+        }
+        const ctx = ctxEl.getContext('2d');
+        resultChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { 
+                labels, 
+                datasets: [{ 
+                    label: 'Average Marks', 
+                    data: dataPoints, 
+                    backgroundColor: '#0078D7',
+                    borderColor: '#005fa3',
+                    borderWidth: 2
+                }] 
+            },
+            options: { 
+                responsive: true,
+                animation: false, // Disable chart animations
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        max: 100
+                    }
+                },
+                plugins: {
+                    legend: { display: true },
+                    title: { display: true, text: 'Subject Performance Overview' }
+                }
+            }
+        });
+    }
+}

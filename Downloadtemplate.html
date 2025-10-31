@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Template</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style2.css">
+</head>
+<body>
+    <div class="navbar2">
+        <img src="navbar.jpeg" alt="">
+    </div>
+    <br><br>
+    <!-- data -->
+    <div class="data">
+        <h3>5 SEMESTER E&C MINI PROJECT-2025-26</h3>
+        <h1>EXAMINATION RESULT ANALYSIS</h1>
+    </div>
+
+    <div class="formContainer">
+
+    <div class="newtemplate">
+        <h2 style="font-weight: 800;">Download Template:</h2>
+        <form action="">
+           <div class="form-group">
+        <label for="academicYear">Academic Year:</label>
+        <input type="text" id="academicYear" name="academicYear" placeholder="Enter academic year" required>
+      </div>
+            <br><br>
+            <div class="form-group">
+            <label for="branch">Branch:</label>
+            <input type="text" id="branch" name="branch" placeholder="Enter branch" required>
+        </div>
+            <br><br>
+            <div class="form-group" id="semester">
+            <label for="semester">Semester:</label>
+            <!-- <input type="text" id="semester" name="semester" placeholder="Enter semester" required> -->
+            <select id="semester" name="semester" required>
+                <option value="" disabled selected>Select semester</option>
+                <option value="1">1st Semester</option>
+                <option value="2">2nd Semester</option>
+                <option value="3">3rd Semester</option>
+                <option value="4">4th Semester</option>
+                <option value="5">5th Semester</option>
+                <option value="6">6th Semester</option>
+                <option value="7">7th Semester</option>
+                <option value="8">8th Semester</option>
+            </select>
+        </div>
+        </form>
+    </div>
+    </div>
+
+    <div class="tamplatetable">
+
+        <table border="1">
+        <tr>
+            <th style="width: 10%;">T.N</th>
+            <th style="width: 40%;">Template Name</th>
+            <th style="width: 50%;">Action</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>Examination_Template_2025</td>
+            <td border="2">
+                <table class="action-table" border="1">
+                    <tr>
+                        <td class="download"><button>DOWNLOAD</button></td>
+                        <td class="edit"><button>COPY & EDIT</button></td>
+                        <td class="delete"><button>DELETE</button></td>
+                    </tr>
+                </table>
+              
+            </td>
+        </tr>
+    </table>
+    </div>
+
+
+     <footer>
+    <span class="copy">Copyright ©️ 2025.All rights reserved. Developed by under Skill Lab @E&C, KVGCE</span>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>template</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="navbar2">
+        <img src="navbar.jpeg" alt="">
+    </div>
+    <br><br>
+    <!-- data -->
+    <div class="data">
+        <h3>5 SEMESTER E&C MINI PROJECT-2025-26</h3>
+        <h1>EXAMINATION RESULT ANALYSIS</h1>
+    </div>
+
+    <div class="formContainer">
+
+    <div class="newtemplate">
+        <h2>Create New Template:</h2>
+        <form action="">
+           <div class="form-group">
+        <label for="academicYear">Academic Year:</label>
+        <input type="text" id="academicYear" name="academicYear" placeholder="Enter academic year" required>
+      </div>
+            <br><br>
+            <div class="form-group">
+            <label for="branch">Branch:</label>
+            <input type="text" id="branch" name="branch" placeholder="Enter branch" required>
+        </div>
+            <br><br>
+            <div class="form-group" id="semester">
+            <label for="semester">Semester:</label>
+            <!-- <input type="text" id="semester" name="semester" placeholder="Enter semester" required> -->
+            <select id="semester" name="semester" required>
+                <option value="" disabled selected>Select semester</option>
+                <option value="1">1st Semester</option>
+                <option value="2">2nd Semester</option>
+                <option value="3">3rd Semester</option>
+                <option value="4">4th Semester</option>
+                <option value="5">5th Semester</option>
+                <option value="6">6th Semester</option>
+                <option value="7">7th Semester</option>
+                <option value="8">8th Semester</option>
+            </select>
+        </div>
+        </form>
+    </div>
+    </div>
+
+    <div class="addCourse">
+
+        <div class="addBtn"><button id="addBtn">Add Course</button></div><br>
+
+        <div class="addCourseTable">
+            <table border="1">
+                <tr>
+                    <th>S.No</th>
+                    <th>Course Code</th>
+                    <th>Course Title</th>
+                    <th>Staff Incharge</th>
+                    <th>Course Type</th>
+                    <th>MAX CIE</th>
+                    <th>MIN CIE</th>
+                    <th>MAX SEE</th>
+                    <th>MIN SEE</th>
+                    <th>Total MAX</th>
+                    <th>Total MIN(pass)</th>
+                    <th>Action</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td><input type="text" placeholder="Enter Course Code"></td>
+                    <td><input type="text" placeholder="Enter Course Title"></td>
+                    <td><input type="text" placeholder="Enter Staff Incharge"></td>
+                    <td>
+                        <select>
+                            <option id="courcetype" value="" disabled selected>Select Course Type</option>
+                            <option value="theory">Theory</option>
+                            <option value="practical">Practical</option>
+                        </select>
+                    </td>
+                    <td><input type="number" placeholder="Enter MAX CIE"></td>
+                    <td><input type="number" placeholder="Enter MIN CIE"></td>
+                    <td><input type="number" placeholder="Enter MAX SEE"></td>
+                    <td><input type="number" placeholder="Enter MIN SEE"></td>
+                    <td><input type="number" placeholder="Enter Total MAX"></td>
+                    <td><input type="number" placeholder="Enter Total MIN(pass)"></td>
+                   <div id="actiondelete1"><td><button id="actiondeletebtn1">Delete</button></td></div>
+            </table>
+        </div>
+    </div>
+    <br><br>
+    <div class="addStudent">
+        <div class="addStudentBtn"><button id="addStudentBtn">Add Student</button></div><br>
+
+        <div class="addStudentTable">
+            <table border="1">
+                <tr>
+                    <th style="width: 8%; text-align: left;">S.No</th>
+                    <th style="width: 25%; text-align: left;">USN</th>
+                    <th style="width: 35%; text-align: left;">Student Name</th>
+                    <th style="width: 20%; text-align: left;">Action</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td><input type="text" placeholder="Enter your USN" class="Addcoursetables" style="width: 92%;"></td>
+                    <td><input type="text" placeholder="Enter Student Name" class="Addcoursetables" style="width: 95%;"></td>
+                    <div id="actiondelete2"></div><td><button id="actiondeletebtn2">Delete</button></td>
+            </table>
+    </div><br>
+
+    <div class="saveTemplate">
+        <button id="saveTemplateBtn">Save Template</button>
+    </div>
+
+
+    <footer id="footer2">
+    <span class="copy">Copyright ©️ 2025.All rights reserved. Developed by under Skill Lab @E&C, KVGCE</span>
+  </footer>
+
+  <script src="newTemplate.js"></script>
+</body>
+</html>

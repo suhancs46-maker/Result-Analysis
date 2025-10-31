@@ -1,0 +1,336 @@
+body{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+    background-color: white;
+}
+.navbar{
+    height: 200px;
+    width: 100%;
+    background-color: black;
+}
+.navbar img{
+   height: auto;
+   width: 100%;
+}
+
+.data{
+    height: 100px;
+    width: 100%;
+    text-align: center;
+}
+.doneby{
+    height: 200px;
+    width: 100%;
+    text-align: center;
+}
+.doneby-header {
+    padding-left: 300px;
+    color: black;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 10px 0;
+}
+.profile{
+    height: 200px;
+    width: 100%;
+    text-align: center;
+}
+.name {
+      font-size: 25px;
+      font-weight: 600;
+      display: inline; /* keep on same line as .quals */
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .quals {
+      font-size: 0.85em; /* slightly smaller */
+      color: black;     /* muted gray */
+      vertical-align: sub;
+      display: inline;
+    }
+    .quals small{
+        font-size: 0.85em; /* even smaller for the small text */
+    }
+
+    /*btns*/
+
+    .btns {
+    height: 400px;
+    width: 100%;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;     /* centers buttons horizontally */
+    justify-content: center; /* centers vertically */
+    gap: 20px;
+    font-size: 30px;
+    /* margin: 4px 2px;  */
+    cursor: pointer;
+}
+
+#btn1 {
+    height: 70px;
+    width: 500px;
+    border-radius: 5px;
+    border-radius: 1rem;
+    background-color: blue;
+    color: white;
+    border: none;
+    transition: background-color 0.3s ease;
+    gap: 20px;
+    font-size: 30px;
+    margin: 4px 2px; 
+    cursor: pointer;
+} 
+#btn2 {
+    height: 70px;
+    width: 500px;
+    border-radius: 5px;
+    border-radius: 1rem;
+    background-color: blue;
+    color: white;
+    border: none;
+    transition: background-color 0.3s ease;
+    gap: 20px;
+    font-size: 30px;
+    margin: 4px 2px; 
+    cursor: pointer;
+}
+#btn3 {
+    height: 70px;
+    width: 500px;
+    border-radius: 5px;
+    border-radius: 1rem;
+    background-color: blue;
+    color: white;
+    border: none;
+    transition: background-color 0.3s ease;
+    gap: 20px;
+    font-size: 30px;
+    margin: 4px 2px; 
+    cursor: pointer;
+}
+
+
+#btn1:hover {
+    background-color: green;
+}
+#btn2:hover {
+    background-color: green;
+}
+#btn3:hover {
+    background-color: green;
+}
+
+
+footer {
+      width: 100%;
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 15px 10px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+
+/* New template creation */
+
+.navbar2{
+    height: 200px;
+    width: 100%;
+    background-color: black;
+    }
+.navbar2 img{
+   height: auto;
+   width: 100%;
+    }
+
+
+
+.formContainer {
+      height: 400px;
+      width: 100%;
+     padding-left: 80px;
+     }
+.newtemplate{
+      display: flex;
+      flex-direction: column;
+      background-color: white;
+      padding-left: 30px;
+      border-radius: 10px;
+      /* box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1); */
+      width: 800px;
+    }
+     h2 {
+      text-align: left;
+      color: #333;
+      margin-bottom: 25px;
+    }
+    .form-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    label {
+      flex: 0.7;
+      font-weight: 600;
+      color: #333;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    input {
+      flex: 2;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+     input:focus {
+      border-color: #666;
+    }
+
+    #semester{
+      flex: 2;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #courcetype {
+        height: 40px;
+        width: 100%;
+    }
+    
+    .addBtn{
+        padding-left: 30px;
+    }
+
+    #addBtn {
+     height: 50px;
+     width: 150px;
+     padding-left: 0px;
+     background-color: blue;
+     color: white;
+     font-size: 18px;
+     font-weight: 500;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+    }
+
+    #actiondeletebtn1 {
+     height: 40px;
+     width: 100px;
+     padding-left: 0px;
+     font-size: 16px;
+     font-weight: 500;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+    }
+
+    #actiondeletebtn2 {
+     height: 40px;
+     width: 100%;
+     padding-left: 0px;
+     font-size: 16px;
+     font-weight: 500;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+    }
+
+    table {
+    width: 80%;
+    padding-left: 100px;
+    text-align: left;
+    border-collapse: collapse;
+    text-align: left;
+     }
+    .addStudentTables{
+     height: 40px;
+     width: 100%;
+    }
+
+    .addStudentTable{
+     width: 90%;
+     padding-left: 100px;
+     text-align: left;
+     /* display: flex;
+     justify-content: space-between; */
+     }
+
+
+    .addStudentBtn{
+        padding-left: 30px;
+    }
+
+    #addStudentBtn {
+     height: 50px;
+     width: 150px;
+     padding-left: 0px;
+     background-color: blue;
+     color: white;
+     font-size: 18px;
+     font-weight: 500;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+    }
+
+    #addStudentBtn:hover {
+      background-color: green;
+    }
+
+    #addBtn:hover {
+      background-color: green;
+    }
+
+    .addStudentTable{
+     padding-left: 30px;
+    }
+
+    .saveTemplate{
+        padding-left: 30px;
+    }
+
+    #saveTemplateBtn {
+     height: 50px;
+     width: 150px;
+     padding-left: 0px;
+     margin-bottom: 30px;
+     background-color: blue;
+     color: white;
+     font-size: 18px;
+     font-weight: 500;
+     border: none;
+     border-radius: 5px;
+     cursor: pointer;
+    }
+    #saveTemplateBtn:hover {
+      background-color: green;
+    }
+
+    #footer2 {
+        margin-top: 20px;
+        width: 1800px;
+    }
+
+
+/* Downloaded from */
+
+.tamplatetable{
+    height: 400px;
+    width: 100%;
+    padding-left: 80px;
+    text-decoration: overline;
+
+   }

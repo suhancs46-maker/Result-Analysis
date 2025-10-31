@@ -1,0 +1,275 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>resultAnalysis</title>
+    <link rel="stylesheet" href="style2.css">
+</head>
+<body>
+    <div class="navbar">
+        <img src="navbar.jpeg" alt="">
+    </div>
+    <br><br>
+         data -->
+   <!-- <div class="data">
+        <h3>5 SEMESTER E&C MINI PROJECT-2025-26</h3>
+        <h1>EXAMINATION RESULT ANALYSIS</h1>
+    </div>
+
+    <h2>RESULT ANALYSIS</h2>
+
+    <div class="uploadfile">
+    <div class="file1">Upload Marks(Exel) File:</div>
+       <div class="file2"><input type="file" id="fileInput"></div>
+    </div>
+    <br><br>
+    <div class="analysisBtns">
+        <button id="analyzeBtn">Analyze Result</button>
+        <button id="exportBtn">Export</button>
+        <button id="saveBtn">Save Analysis</button>
+    </div>
+
+    <div class="resultAnalysis">
+
+    </div>
+
+    <div class="footerdiv">
+    <footer>
+    <span class="copy">Copyright ©️ 2025.All rights reserved. Developed by under Skill Lab @E&C, KVGCE</span>
+  </footer>
+    </div>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result Analysis</title>
+    <link rel="stylesheet" href="style2.css">
+
+    <!-- Chart.js for graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- XLSX for reading Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+ <style>
+    body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f0f3f7;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+.navbar img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.data h3 {
+    color: #444;
+    margin-top: 15px;
+}
+.data h1 {
+    color: #0078D7;
+    font-size: 28px;
+    margin-top: 10px;
+}
+
+.uploadfile {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.file1 {
+    font-weight: bold;
+}
+
+.analysisBtns {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.analysisBtns button {
+    padding: 10px 20px;
+    background: #0078D7;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.analysisBtns button:hover {
+    background: #005fa3;
+}
+
+/* Result Section */
+.resultAnalysis {
+    width: 90%;
+    margin: 40px auto;
+    background: #fff;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    min-height: 200px;
+}
+
+.summary-section h3 {
+    color: #333;
+}
+
+.summary-cards {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.card {
+    background: #f8f9fa;
+    padding: 15px 25px;
+    border-radius: 10px;
+    text-align: center;
+    width: 200px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.card h4 {
+    color: #0078D7;
+}
+.card p {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+/* Table Section */
+.table-section {
+    margin-top: 30px;
+}
+
+#resultTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#resultTable th, #resultTable td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+}
+
+#resultTable th {
+    background: #0078D7;
+    color: white;
+}
+
+#resultTable tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+/* Chart Section */
+.chart-section {
+    margin-top: 40px;
+}
+
+/* Footer */
+footer {
+    background: #0078D7;
+    color: white;
+    padding: 15px;
+    margin-top: 30px;
+    font-size: 14px;
+}
+ </style>
+<body>
+
+    
+    <div class="navbar">
+        <img src="navbar.jpeg" alt="KVG Logo">
+    </div>
+
+    <div class="data">
+        <h3>5th SEMESTER E&C MINI PROJECT - 2025-26</h3>
+        <h1>EXAMINATION RESULT ANALYSIS</h1>
+    </div>
+
+    <h2>RESULT ANALYSIS</h2>
+
+    <!-- Upload Excel -->
+    <div class="uploadfile">
+        <div class="file1">Upload Marks (Excel) File:</div>
+        <div class="file2">
+            <input type="file" id="fileInput" accept=".xlsx, .xls">
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="analysisBtns">
+        <button id="analyzeBtn">Analyze Result</button>
+        <button id="exportBtn">Export</button>
+        <button id="saveBtn">Save Analysis</button>
+    </div>
+
+    <!-- Analysis Section -->
+    <div class="resultAnalysis">
+        <!-- Summary -->
+        <div class="summary-section">
+            <h3>Result Summary</h3>
+            <div class="summary-cards">
+                <div class="card"><h4>Average Marks</h4><p id="avgMarks">--</p></div>
+                <div class="card"><h4>Highest Marks</h4><p id="highMarks">--</p></div>
+                <div class="card"><h4>Lowest Marks</h4><p id="lowMarks">--</p></div>
+                <div class="card"><h4>Pass Percentage</h4><p id="passPercent">--</p></div>
+            </div>
+        </div>
+
+        <!-- Subject Table -->
+        <div class="table-section">
+            <h3>Subject-wise Analysis</h3>
+            <table id="resultTable">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Max Marks</th>
+                        <th>Obtained Marks</th>
+                        <th>Percentage</th>
+                        <th>Grade</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-section">
+            <h3>📈 Performance Chart</h3>
+            <canvas id="resultChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>©️ 2025. Developed under Skill Lab @E&C, KVGCE</p>
+    </footer>
+
+    <!-- JS Files -->
+    <script src="renderComprehensive.js"></script>
+    <script src="script2.js"></script>
+</body>
+</html>
