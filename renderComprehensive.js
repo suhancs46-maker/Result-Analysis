@@ -174,30 +174,30 @@ function renderComprehensiveAnalysis(data) {
             <!-- Graphical Representations -->
             <h3 style="color: #0078D7; margin-top: 2rem; text-align: center;">📈 Graphical Analysis</h3>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin: 20px 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; margin: 20px 0;">
                 <!-- Pass/Fail Distribution Chart -->
                 <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <h4 style="color: #0078D7; text-align: center;">Pass/Fail Distribution</h4>
-                    <canvas id="passFailChart" width="400" height="400"></canvas>
+                    <canvas id="passFailChart" width="450" height="450"></canvas>
                 </div>
 
                 <!-- Grade Distribution Chart -->
                 <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <h4 style="color: #0078D7; text-align: center;">Grade Distribution</h4>
-                    <canvas id="gradeChart" width="400" height="400"></canvas>
+                    <canvas id="gradeChart" width="450" height="450"></canvas>
                 </div>
-            </div>
 
-            <!-- Subject-wise Pass Percentage Chart -->
-            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 20px 0;">
-                <h4 style="color: #0078D7; text-align: center;">Subject-wise Pass Percentage</h4>
-                <canvas id="subjectPassChart" height="100"></canvas>
-            </div>
+                <!-- Subject-wise Pass Percentage Chart -->
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h4 style="color: #0078D7; text-align: center;">Subject-wise Pass %</h4>
+                    <canvas id="subjectPassChart" width="450" height="450"></canvas>
+                </div>
 
-            <!-- Subject-wise Average Marks Comparison -->
-            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 20px 0;">
-                <h4 style="color: #0078D7; text-align: center;">Subject-wise Average Marks (CIE vs SEE)</h4>
-                <canvas id="avgMarksChart" height="100"></canvas>
+                <!-- Subject-wise Average Marks Comparison -->
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h4 style="color: #0078D7; text-align: center;">CIE vs SEE Average</h4>
+                    <canvas id="avgMarksChart" width="450" height="450"></canvas>
+                </div>
             </div>
 
             <!-- Legend -->
@@ -327,7 +327,7 @@ function createCharts(data) {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Pass Percentage (%)',
+                    label: 'Pass %',
                     data: passPercentages,
                     backgroundColor: passPercentages.map(p => p >= 75 ? '#28a745' : p >= 50 ? '#ffc107' : '#dc3545'),
                     borderWidth: 1,
@@ -336,18 +336,28 @@ function createCharts(data) {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'top'
+                        position: 'top',
+                        labels: {
+                            font: { size: 11 },
+                            padding: 8
+                        }
                     }
                 },
                 scales: {
+                    x: {
+                        ticks: {
+                            font: { size: 10 }
+                        }
+                    },
                     y: {
                         beginAtZero: true,
                         max: 100,
                         ticks: {
+                            font: { size: 10 },
                             callback: function(value) {
                                 return value + '%';
                             }
@@ -371,14 +381,14 @@ function createCharts(data) {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Average CIE',
+                        label: 'Avg CIE',
                         data: avgCIE,
                         backgroundColor: '#0078D7',
                         borderWidth: 1,
                         borderColor: '#005a9e'
                     },
                     {
-                        label: 'Average SEE',
+                        label: 'Avg SEE',
                         data: avgSEE,
                         backgroundColor: '#ff6b6b',
                         borderWidth: 1,
@@ -388,18 +398,28 @@ function createCharts(data) {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'top'
+                        position: 'top',
+                        labels: {
+                            font: { size: 11 },
+                            padding: 8
+                        }
                     }
                 },
                 scales: {
+                    x: {
+                        ticks: {
+                            font: { size: 10 }
+                        }
+                    },
                     y: {
                         beginAtZero: true,
                         max: 50,
                         ticks: {
+                            font: { size: 10 },
                             stepSize: 10
                         }
                     }
