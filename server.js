@@ -3,6 +3,7 @@ const path = require('path');
 const cors = require('cors');
 const multer = require('multer');
 const ExcelJS = require('exceljs');
+const XLSX = require('xlsx');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,61 +32,118 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     
     console.log('Processing file:', req.file.originalname, 'Size:', req.file.buffer.length);
     
-    // Use ExcelJS to parse the buffer
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(req.file.buffer);
-    console.log('Workbook loaded, worksheets:', workbook.worksheets.length);
-    console.log('Worksheet names:', workbook.worksheets.map(ws => ws.name));
+    // Try ExcelJS first
+    let workbook = new ExcelJS.Workbook();
+    let useXLSX = false;
     
-    // Try to find the worksheet with student results (look for USN column)
-    let worksheet = null;
-    for (const ws of workbook.worksheets) {
-      const firstRow = ws.getRow(1);
-      const hasUSN = firstRow.values.some(v => String(v || '').toUpperCase().includes('USN'));
-      if (hasUSN) {
-        worksheet = ws;
-        console.log('Found student results in worksheet:', ws.name);
-        break;
+    try {
+      await workbook.xlsx.load(req.file.buffer);
+      console.log('ExcelJS: Workbook loaded, worksheets:', workbook.worksheets.length);
+      
+      if (workbook.worksheets.length === 0) {
+        console.log('ExcelJS found no worksheets, trying XLSX library...');
+        useXLSX = true;
       }
+    } catch (error) {
+      console.error('ExcelJS error:', error.message);
+      console.log('Trying XLSX library as fallback...');
+      useXLSX = true;
     }
     
-    // If no USN found, try the last worksheet or second worksheet
-    if (!worksheet) {
-      worksheet = workbook.worksheets[workbook.worksheets.length > 1 ? 1 : 0];
-      console.log('Using worksheet:', worksheet.name);
-    }
-    if (!worksheet) {
-      console.log('No worksheet found in workbook');
-      return res.status(400).json({ error: 'No worksheet found' });
-    }
+    let worksheet = null;
+    let rows = [];
+    
+    if (useXLSX) {
+      // Fallback to XLSX library
+      try {
+        const xlsxWorkbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        console.log('XLSX: Workbook loaded, sheets:', Object.keys(xlsxWorkbook.Sheets).length);
+        console.log('XLSX: Sheet names:', Object.keys(xlsxWorkbook.Sheets));
+        
+        if (Object.keys(xlsxWorkbook.Sheets).length === 0) {
+          return res.status(400).json({ error: 'Excel file contains no worksheets' });
+        }
+        
+        // Use first sheet
+        const firstSheetName = Object.keys(xlsxWorkbook.Sheets)[0];
+        const xlsxSheet = xlsxWorkbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(xlsxSheet, { header: 1, defval: '' });
+        
+        console.log('XLSX: Converted to JSON, rows:', jsonData.length);
+        console.log('XLSX: First 3 rows:', jsonData.slice(0, 3));
+        
+        // Convert to our format
+        rows = jsonData.map((row, index) => ({ rowNumber: index + 1, vals: row }));
+        
+      } catch (xlsxError) {
+        console.error('XLSX error:', xlsxError.message);
+        return res.status(400).json({ error: 'Unable to read Excel file with any library' });
+      }
+    } else {
+      // Use ExcelJS
+      console.log('ExcelJS: Worksheet names:', workbook.worksheets.map(ws => ws.name));
+      
+      // Try to find the worksheet with student results (look for USN column)
+      for (const ws of workbook.worksheets) {
+        // Check multiple rows for USN (could be in row 1 or later rows)
+        let foundUSN = false;
+        for (let i = 1; i <= Math.min(10, ws.rowCount); i++) {
+          const row = ws.getRow(i);
+          const hasUSN = row.values.some(v => String(v || '').toUpperCase().includes('USN'));
+          if (hasUSN) {
+            foundUSN = true;
+            break;
+          }
+        }
+        if (foundUSN) {
+          worksheet = ws;
+          console.log('Found student results in worksheet:', ws.name);
+          break;
+        }
+      }
+      
+      // If no USN found, use first worksheet
+      if (!worksheet) {
+        worksheet = workbook.worksheets[0];
+        console.log('Using first worksheet:', worksheet?.name);
+      }
+      
+      if (!worksheet) {
+        console.log('No worksheet found in workbook');
+        return res.status(400).json({ error: 'No worksheet found' });
+      }
 
-    // Read all rows including potential course code rows
-    const rows = [];
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      const vals = row.values.slice(1); // ExcelJS row.values is 1-based, values[0] empty
-      rows.push({ rowNumber, vals });
-    });
+      // Read all rows including potential course code rows
+      worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        const vals = row.values.slice(1); // ExcelJS row.values is 1-based, values[0] empty
+        rows.push({ rowNumber, vals });
+      });
+    }
 
     if (rows.length < 2) return res.status(400).json({ error: 'Not enough rows (need header + at least one data row)' });
 
     console.log('First 5 rows:', rows.slice(0, 5).map(r => r.vals));
     
-    // Try to identify structure: look for course codes, subject names, and student data
-    // Typical structure might be:
-    // Row 1: Course Codes (BMATE101, BPHYE102, etc.)
-    // Row 2: Subject Names or CIE/SEE headers
-    // Row 3+: Student data (USN, Name, Marks...)
+    // Try to identify structure
+    // Your template format:
+    // Row 1: Instructions
+    // Row 2: Academic Year
+    // Row 3: Branch
+    // Row 4: Semester
+    // Row 5: Course Codes
+    // Row 6: Headers (S.N., USN, NAME, CIE, SEE...)
+    // Row 7+: Student data
     
     let courseCodeRow = null;
     let headerRow = null;
     let dataStartRow = 0;
     
-    // Look for row with course codes (usually starts with something like "BMATE", "BPHY", etc.)
-    for (let i = 0; i < Math.min(5, rows.length); i++) {
+    // Look for row with course codes (pattern like BMATE101, BEC301, etc.)
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
       const vals = rows[i].vals;
       const hasCourseCodes = vals.some(v => {
         const str = String(v || '');
-        return /^[A-Z]{4,6}\d{3,4}[A-Z]?/i.test(str); // Pattern like BMATE101
+        return /^[A-Z]{3,6}\d{3,4}[A-Z]?/i.test(str); // Pattern like BMATE101 or BEC301
       });
       
       if (hasCourseCodes && !courseCodeRow) {
@@ -96,8 +154,9 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       // Look for header row with USN, Name, CIE, SEE patterns
       const hasUSN = vals.some(v => String(v || '').toUpperCase().includes('USN'));
       const hasCIE = vals.some(v => String(v || '').toUpperCase().includes('CIE'));
+      const hasName = vals.some(v => String(v || '').toUpperCase().includes('NAME'));
       
-      if ((hasUSN || hasCIE) && !headerRow) {
+      if ((hasUSN || (hasCIE && hasName)) && !headerRow) {
         headerRow = vals;
         dataStartRow = i + 1;
         console.log('Found header row', i + 1, ':', headerRow);
@@ -130,15 +189,35 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     // Parse student data
     const students = rows.slice(dataStartRow).map((rowData, idx) => {
       const row = rowData.vals;
+      
+      // Determine column indices based on header
+      let snIdx = 0, usnIdx = 1, nameIdx = 2, marksStartIdx = 3;
+      
+      // Check if first header is S.N. or serial number
+      const firstHeader = String(headers[0] || '').toLowerCase();
+      if (firstHeader.includes('s.n') || firstHeader.includes('serial') || firstHeader.includes('sno')) {
+        // Has S.N. column: S.N., USN, NAME, marks...
+        snIdx = 0;
+        usnIdx = 1;
+        nameIdx = 2;
+        marksStartIdx = 3;
+      } else if (firstHeader.includes('usn')) {
+        // Starts with USN: USN, NAME, marks...
+        snIdx = -1;
+        usnIdx = 0;
+        nameIdx = 1;
+        marksStartIdx = 2;
+      }
+      
       const student = {
-        sn: Number(idx + 1), // Ensure it's a number
-        usn: String(row[0] || '').trim(),
-        name: String(row[1] || '').trim()
+        sn: snIdx >= 0 ? (Number(row[snIdx]) || (idx + 1)) : (idx + 1), // Use serial from file or index
+        usn: String(row[usnIdx] || '').trim(),
+        name: String(row[nameIdx] || '').trim()
       };
       
       // Extract marks for each subject (CIE and SEE pairs)
       const subjects = [];
-      for (let i = 2; i < row.length; i += 2) {
+      for (let i = marksStartIdx; i < row.length; i += 2) {
         if (i + 1 < row.length) {
           const cie = parseFloat(row[i]) || 0;
           const see = parseFloat(row[i + 1]) || 0;

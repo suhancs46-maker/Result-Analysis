@@ -21,18 +21,18 @@
 
     <div class="newtemplate">
         <h2>Create New Template:</h2>
-        <form action="">
+        <div class="template-form">
            <div class="form-group">
         <label for="academicYear">Academic Year:</label>
-        <input type="text" id="academicYear" name="academicYear" placeholder="Enter academic year" required>
+        <input type="text" id="academicYear" name="academicYear" placeholder="Enter academic year (e.g., 2024-25)" required>
       </div>
             <br><br>
             <div class="form-group">
             <label for="branch">Branch:</label>
-            <input type="text" id="branch" name="branch" placeholder="Enter branch" required>
+            <input type="text" id="branch" name="branch" placeholder="Enter branch (e.g., Computer Science)" required>
         </div>
             <br><br>
-            <div class="form-group" id="semester">
+            <div class="form-group">
             <label for="semester">Semester:</label>
             <!-- <input type="text" id="semester" name="semester" placeholder="Enter semester" required> -->
             <select id="semester" name="semester" required>
@@ -47,13 +47,13 @@
                 <option value="8">8th Semester</option>
             </select>
         </div>
-        </form>
+        </div>
     </div>
     </div>
 
     <div class="addCourse">
 
-        <div class="addBtn"><button id="addBtn">Add Course</button></div><br>
+        <div class="addBtn"><button type="button" id="addBtn">Add Course</button></div><br>
 
         <div class="addCourseTable">
             <table border="1">
@@ -73,29 +73,30 @@
                 </tr>
                 <tr>
                     <td>1</td>
-                    <td><input type="text" placeholder="Enter Course Code"></td>
-                    <td><input type="text" placeholder="Enter Course Title"></td>
-                    <td><input type="text" placeholder="Enter Staff Incharge"></td>
+                    <td><input type="text" id="courseCode1" name="courseCode1" placeholder="Enter Course Code" autocomplete="off"></td>
+                    <td><input type="text" id="courseTitle1" name="courseTitle1" placeholder="Enter Course Title" autocomplete="off"></td>
+                    <td><input type="text" id="staffIncharge1" name="staffIncharge1" placeholder="Enter Staff Incharge" autocomplete="off"></td>
                     <td>
-                        <select>
-                            <option id="courcetype" value="" disabled selected>Select Course Type</option>
+                        <select id="courseType1" name="courseType1">
+                            <option value="" disabled selected>Select Course Type</option>
                             <option value="theory">Theory</option>
                             <option value="practical">Practical</option>
                         </select>
                     </td>
-                    <td><input type="number" placeholder="Enter MAX CIE"></td>
-                    <td><input type="number" placeholder="Enter MIN CIE"></td>
-                    <td><input type="number" placeholder="Enter MAX SEE"></td>
-                    <td><input type="number" placeholder="Enter MIN SEE"></td>
-                    <td><input type="number" placeholder="Enter Total MAX"></td>
-                    <td><input type="number" placeholder="Enter Total MIN(pass)"></td>
-                   <div id="actiondelete1"><td><button id="actiondeletebtn1">Delete</button></td></div>
+                    <td><input type="number" id="maxCIE1" name="maxCIE1" placeholder="Enter MAX CIE" autocomplete="off"></td>
+                    <td><input type="number" id="minCIE1" name="minCIE1" placeholder="Enter MIN CIE" autocomplete="off"></td>
+                    <td><input type="number" id="maxSEE1" name="maxSEE1" placeholder="Enter MAX SEE" autocomplete="off"></td>
+                    <td><input type="number" id="minSEE1" name="minSEE1" placeholder="Enter MIN SEE" autocomplete="off"></td>
+                    <td><input type="number" id="totalMax1" name="totalMax1" placeholder="Enter Total MAX" autocomplete="off"></td>
+                    <td><input type="number" id="totalMin1" name="totalMin1" placeholder="Enter Total MIN(pass)" autocomplete="off"></td>
+                    <td><button type="button" id="actiondeletebtn1">Delete</button></td>
+                </tr>
             </table>
         </div>
     </div>
     <br><br>
     <div class="addStudent">
-        <div class="addStudentBtn"><button id="addStudentBtn">Add Student</button></div><br>
+        <div class="addStudentBtn"><button type="button" id="addStudentBtn">Add Student</button></div><br>
 
         <div class="addStudentTable">
             <table border="1">
@@ -107,14 +108,15 @@
                 </tr>
                 <tr>
                     <td>1</td>
-                    <td><input type="text" placeholder="Enter your USN" class="Addcoursetables" style="width: 92%;"></td>
-                    <td><input type="text" placeholder="Enter Student Name" class="Addcoursetables" style="width: 95%;"></td>
-                    <div id="actiondelete2"></div><td><button id="actiondeletebtn2">Delete</button></td>
+                    <td><input type="text" id="studentUSN1" name="studentUSN1" placeholder="Enter your USN" class="Addcoursetables" style="width: 92%;" autocomplete="off"></td>
+                    <td><input type="text" id="studentName1" name="studentName1" placeholder="Enter Student Name" class="Addcoursetables" style="width: 95%;" autocomplete="off"></td>
+                    <td><button type="button" id="actiondeletebtn2">Delete</button></td>
+                </tr>
             </table>
     </div><br>
 
     <div class="saveTemplate">
-        <button id="saveTemplateBtn">Save Template</button>
+        <button type="button" id="saveTemplateBtn">Save Template</button>
     </div>
 
 
@@ -122,6 +124,7 @@
     <span class="copy">Copyright ©️ 2025.All rights reserved. Developed by under Skill Lab @E&C, KVGCE</span>
   </footer>
 
-  <script src="newTemplate.js"></script>
+  <!-- Load main script as ES6 module -->
+  <script type="module" src="newTemplate.js"></script>
 </body>
 </html>
