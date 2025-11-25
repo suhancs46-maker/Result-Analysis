@@ -117,13 +117,18 @@ function analyzeExcelFile(fileBuffer) {
   const studentData = [];
   const dataStartRow = headerRowIndex + 1;
   
+  console.log('📋 Headers found:', headers);
+  console.log('🔍 Starting to read student data from row', dataStartRow + 1);
+  
   for (let i = dataStartRow; i < jsonData.length; i++) {
     const row = jsonData[i];
     
     // Skip empty rows
     if (!row || row.length === 0 || !row[1]) continue;
     
-    const studentRow = {};
+    const studentRow = {
+      _rawRow: row  // Store the raw row data for index access
+    };
     headers.forEach((header, idx) => {
       studentRow[header] = row[idx] !== undefined ? row[idx] : '';
     });
@@ -131,6 +136,7 @@ function analyzeExcelFile(fileBuffer) {
     // Get USN - usually in column 1 or 2
     const usn = String(studentRow[headers[1]] || studentRow.USN || '').trim();
     if (usn && usn.length > 2 && !usn.toLowerCase().includes('usn') && !usn.toLowerCase().includes('s.n')) {
+      console.log(`👤 Student ${studentData.length + 1}: USN=${usn}, Row data:`, row.slice(0, 10));
       studentData.push(studentRow);
     }
   }
@@ -145,18 +151,21 @@ function analyzeExcelFile(fileBuffer) {
   const subjectColumns = [];
   const subjectPairs = [];
   
+  // Find all CIE and SEE column INDICES (not names, since names repeat)
   for (let i = 0; i < headers.length; i++) {
     const header = headers[i].toLowerCase();
     if (header === 'cie' || header === 'see') {
-      subjectColumns.push(headers[i]);
+      subjectColumns.push(i); // Store the INDEX, not the header name
     }
   }
   
-  // Pair CIE and SEE columns
+  console.log('📊 Found CIE/SEE column indices:', subjectColumns);
+  
+  // Pair CIE and SEE columns by index
   for (let i = 0; i < subjectColumns.length; i += 2) {
     if (i + 1 < subjectColumns.length) {
-      const cieCol = subjectColumns[i];
-      const seeCol = subjectColumns[i + 1];
+      const cieColIndex = subjectColumns[i];
+      const seeColIndex = subjectColumns[i + 1];
       const subjectIndex = Math.floor(i / 2);
       const courseCode = courseCodes[subjectIndex] || `Subject ${subjectIndex + 1}`;
       const courseName = courseNames[subjectIndex] || courseCode;
@@ -164,24 +173,45 @@ function analyzeExcelFile(fileBuffer) {
       subjectPairs.push({
         courseCode: courseCode,
         courseName: courseName,
-        cieColumn: cieCol,
-        seeColumn: seeCol
+        cieColumnIndex: cieColIndex,  // Store index
+        seeColumnIndex: seeColIndex   // Store index
       });
     }
   }
   
   console.log('📚 Subject pairs:', subjectPairs.length);
   
+  // Log subject pair details
+  subjectPairs.forEach((sp, idx) => {
+    console.log(`📖 Subject ${idx + 1}: ${sp.courseCode} - CIE col index: ${sp.cieColumnIndex}, SEE col index: ${sp.seeColumnIndex}`);
+  });
+  
   // Calculate statistics for each subject
   const subjectStats = [];
   const allMarks = [];
   
   subjectPairs.forEach((subject, idx) => {
-    const cieMarks = studentData.map(s => parseFloat(s[subject.cieColumn]) || 0);
-    const seeMarks = studentData.map(s => parseFloat(s[subject.seeColumn]) || 0);
+    console.log(`\n📊 Processing subject ${idx + 1}: ${subject.courseCode}`);
+    console.log(`   Looking for CIE in column index: ${subject.cieColumnIndex}`);
+    console.log(`   Looking for SEE in column index: ${subject.seeColumnIndex}`);
+    
+    const cieMarks = studentData.map((s, i) => {
+      const val = parseFloat(s._rawRow[subject.cieColumnIndex]) || 0;
+      if (i === 0) console.log(`   First student CIE value: "${s._rawRow[subject.cieColumnIndex]}" -> ${val}`);
+      return val;
+    });
+    const seeMarks = studentData.map((s, i) => {
+      const val = parseFloat(s._rawRow[subject.seeColumnIndex]) || 0;
+      if (i === 0) console.log(`   First student SEE value: "${s._rawRow[subject.seeColumnIndex]}" -> ${val}`);
+      return val;
+    });
+    
+    console.log(`   All CIE marks:`, cieMarks);
+    console.log(`   All SEE marks:`, seeMarks);
+    
     const totalMarks = studentData.map(student => {
-      const cie = parseFloat(student[subject.cieColumn]) || 0;
-      const see = parseFloat(student[subject.seeColumn]) || 0;
+      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
       return cie + see;
     });
     
@@ -232,8 +262,8 @@ function analyzeExcelFile(fileBuffer) {
   const passedStudents = studentData.filter(student => {
     let allPassed = true;
     subjectPairs.forEach(subject => {
-      const cie = parseFloat(student[subject.cieColumn]) || 0;
-      const see = parseFloat(student[subject.seeColumn]) || 0;
+      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
       const total = cie + see;
       if (total < 40 || see < 18) allPassed = false; // Need 40 total and 18 in SEE
     });
@@ -258,15 +288,15 @@ function analyzeExcelFile(fileBuffer) {
   // Transform students data
   const students = studentData.map((student, index) => {
     const marks = subjectPairs.map(subject => {
-      const cie = parseFloat(student[subject.cieColumn]) || 0;
-      const see = parseFloat(student[subject.seeColumn]) || 0;
+      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
       return cie + see;
     });
     
     // Create subjects array with CIE/SEE breakdown for each subject
     const subjects = subjectPairs.map(subject => {
-      const cie = parseFloat(student[subject.cieColumn]) || 0;
-      const see = parseFloat(student[subject.seeColumn]) || 0;
+      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
       return {
         cie: cie,
         see: see,
@@ -281,8 +311,8 @@ function analyzeExcelFile(fileBuffer) {
     // Check if passed (all subjects >= 40 and SEE >= 18)
     let passed = true;
     subjectPairs.forEach(subject => {
-      const cie = parseFloat(student[subject.cieColumn]) || 0;
-      const see = parseFloat(student[subject.seeColumn]) || 0;
+      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
       const total = cie + see;
       if (total < 40 || see < 18) passed = false;
     });
