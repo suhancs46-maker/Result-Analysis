@@ -14,8 +14,22 @@ const PORT = 3000;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// Middleware
-app.use(cors());
+// Middleware with enhanced CORS
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  credentials: true
+}));
+
+// Handle preflight OPTIONS requests
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept');
+  res.sendStatus(200);
+});
+
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '..'))); // Serves HTML, CSS, JS files from parent directory
 app.use('/uploads', express.static(UPLOAD_DIR)); // Serve uploads directory
