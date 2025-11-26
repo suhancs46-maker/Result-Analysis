@@ -56,42 +56,67 @@ function analyzeExcelFile(fileBuffer) {
   
   console.log('📈 Total rows:', jsonData.length);
   
-  // Find the course codes and names row (looks for "Course Code" and "Course Name")
-  let courseInfoRow = -1;
+  // Extract header information (Academic Year, Branch, Semester)
+  let academicYear = '';
+  let branch = '';
+  let semester = '';
+  
+  for (let i = 0; i < Math.min(jsonData.length, 10); i++) {
+    const row = jsonData[i];
+    const firstCell = String(row[0] || '').trim();
+    
+    if (firstCell.toLowerCase().includes('academic year')) {
+      // Extract value after the colon
+      const parts = firstCell.split(':');
+      if (parts.length > 1) {
+        academicYear = parts[1].trim();
+        console.log('📅 Found Academic Year:', academicYear);
+      }
+    } else if (firstCell.toLowerCase().includes('branch')) {
+      // Extract value after the colon
+      const parts = firstCell.split(':');
+      if (parts.length > 1) {
+        branch = parts[1].trim();
+        console.log('🏫 Found Branch:', branch);
+      }
+    } else if (firstCell.toLowerCase().includes('semester')) {
+      // Extract value after the colon
+      const parts = firstCell.split(':');
+      if (parts.length > 1) {
+        semester = parts[1].trim();
+        console.log('📚 Found Semester:', semester);
+      }
+    }
+  }
+  
+  console.log('📋 Extracted Header Info:', { academicYear, branch, semester });
+  
+  // Extract course codes from row 5 (0-indexed row 4)
+  // Template structure: Row 5 has ['Course Code', '', '', code1, '', code2, '', code3, ...]
   let courseCodes = [];
   let courseNames = [];
   
-  for (let i = 0; i < Math.min(jsonData.length, 15); i++) {
+  // Look for the "Course Code" row (row 5 in template)
+  for (let i = 0; i < Math.min(jsonData.length, 10); i++) {
     const row = jsonData[i];
-    const rowStr = row.join('|').toLowerCase();
+    const firstCell = String(row[0] || '').toLowerCase().trim();
     
-    if (rowStr.includes('course code') && rowStr.includes('course name')) {
-      courseInfoRow = i;
-      console.log('✅ Found course info header at row', i + 1);
-      // Extract course codes and names from subsequent rows
-      for (let j = i + 1; j < Math.min(i + 20, jsonData.length); j++) {
-        const courseRow = jsonData[j];
-        if (courseRow[1] && String(courseRow[1]).trim().length > 0) {
-          const code = String(courseRow[1]).trim();
-          const name = String(courseRow[2] || '').trim();
-          // Check if this looks like a course code (e.g., BMATE101)
-          if (code && !code.toLowerCase().includes('course') && 
-              !code.toLowerCase().includes('indicator') && 
-              !code.toLowerCase().includes('percentage') &&
-              code.length < 20 && code.length > 3) {
-            courseCodes.push(code);
-            courseNames.push(name || code);
-          }
-        } else {
-          // Stop when we hit empty cells or reach the indicators section
-          if (courseCodes.length > 0) break;
+    if (firstCell === 'course code') {
+      console.log('✅ Found Course Code row at index', i);
+      // Extract course codes from this row (every other cell starting from index 3)
+      for (let j = 3; j < row.length; j += 2) {
+        const code = String(row[j] || '').trim();
+        if (code && code.length > 0) {
+          courseCodes.push(code);
+          courseNames.push(code); // Use code as name for now
+          console.log(`📚 Found course code: ${code}`);
         }
       }
       break;
     }
   }
   
-  console.log('📚 Found courses:', courseCodes);
+  console.log('📚 Extracted course codes:', courseCodes);
   
   // Find student data header (USN, NAME, CIE, SEE pattern)
   let headerRowIndex = -1;
@@ -369,6 +394,9 @@ function analyzeExcelFile(fileBuffer) {
     success: true,
     status: 'success',
     message: 'File analyzed successfully!',
+    academicYear: academicYear,
+    branch: branch,
+    semester: semester,
     classStats: {
       totalStudents: studentData.length,
       passed: passedStudents,
