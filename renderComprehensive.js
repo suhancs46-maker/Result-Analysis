@@ -145,10 +145,15 @@ function renderComprehensiveAnalysis(data) {
 
     // Add subject columns (CIE and SEE for each)
     const courseCodes = data.courseCodes || subjectNames;
+    const courseTypes = data.courseTypes || [];
+    
     courseCodes.forEach((code, idx) => {
         const displayText = code !== subjectNames[idx] ? `${code}<br/><small>${subjectNames[idx]}</small>` : code;
+        const isProject = courseTypes[idx]?.isProject || false;
+        const colspan = isProject ? "1" : "2"; // Project courses only have SEE column
+        
         html += `
-                            <th colspan="2" style="padding: 8px; border: 1px solid black; font-size: 12px;">${displayText}</th>
+                            <th colspan="${colspan}" style="padding: 8px; border: 1px solid black; font-size: 12px;">${displayText}</th>
         `;
     });
 
@@ -159,11 +164,21 @@ function renderComprehensiveAnalysis(data) {
     `;
 
     // Add CIE/SEE headers
-    subjectNames.forEach(() => {
-        html += `
+    subjectNames.forEach((name, idx) => {
+        const isProject = courseTypes[idx]?.isProject || false;
+        
+        if (isProject) {
+            // Project courses only have SEE
+            html += `
+                            <th style="padding: 4px; border: 1px solid black; font-size: 11px; font-weight: bold; color: #000000;">SEE</th>
+            `;
+        } else {
+            // Regular courses have both CIE and SEE
+            html += `
                             <th style="padding: 4px; border: 1px solid black; font-size: 11px; font-weight: bold; color: #000000;">CIE</th>
                             <th style="padding: 4px; border: 1px solid black; font-size: 11px; font-weight: bold; color: #000000;">SEE</th>
-        `;
+            `;
+        }
     });
 
     html += `
@@ -177,14 +192,15 @@ function renderComprehensiveAnalysis(data) {
         // Determine row background color based on rank and result
         let rowColor = 'white'; // Default
         
-        if (student.result === 'FAIL') {
-            rowColor = '#ffcccc'; // Complete red for failed students
-        } else if (student.rank === 1) {
+        // Rank colors take priority for top 3
+        if (student.rank === 1) {
             rowColor = '#FFD700'; // Gold for 1st
         } else if (student.rank === 2) {
             rowColor = '#C0C0C0'; // Silver for 2nd
         } else if (student.rank === 3) {
-            rowColor = '#CD7F32'; // Bronze for 3rd
+            rowColor = '#8B4513'; // Brown for 3rd (changed from bronze)
+        } else if (student.result === 'FAIL') {
+            rowColor = '#ffcccc'; // Light red for failed students (only if not in top 3)
         }
         
         const resultColor = student.result === 'PASS' ? 'green' : 'red';
@@ -202,13 +218,24 @@ function renderComprehensiveAnalysis(data) {
         `;
 
         // Add marks for each subject
-        student.subjects.forEach(subj => {
-            const cieColor = subj.cie < 20 ? 'red' : 'black';
-            const seeColor = subj.see < 18 ? 'red' : 'black';
-            html += `
-                <td style="padding: 6px; border: 1px solid black; text-align: center; color: ${cieColor};">${subj.cie}</td>
+        student.subjects.forEach((subj, subjIdx) => {
+            const isProject = courseTypes[subjIdx]?.isProject || false;
+            
+            if (isProject) {
+                // Project courses only show SEE
+                const seeColor = subj.see < 40 ? 'red' : 'black';
+                html += `
                 <td style="padding: 6px; border: 1px solid black; text-align: center; color: ${seeColor};">${subj.see}</td>
-            `;
+                `;
+            } else {
+                // Regular courses show both CIE and SEE
+                const cieColor = subj.cie < 20 ? 'red' : 'black';
+                const seeColor = subj.see < 18 ? 'red' : 'black';
+                html += `
+                <td style="padding: 6px; border: 1px solid black; text-align: center; color: ${cieColor};">${subj.cie === 'N/A' ? 'N/A' : subj.cie}</td>
+                <td style="padding: 6px; border: 1px solid black; text-align: center; color: ${seeColor};">${subj.see}</td>
+                `;
+            }
         });
 
         html += `

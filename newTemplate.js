@@ -193,18 +193,8 @@ function initializeStudentManagement() {
 
     console.log('📋 Form Values:', { academicYear, branch, semester, totalStudentsInput });
 
-    if (!academicYear || !branch || !semester) {
-      alert(`❌ Please fill all required fields:\n\n- Academic Year: ${academicYear || 'MISSING'}\n- Branch: ${branch || 'MISSING'}\n- Semester: ${semester || 'MISSING'}`);
-      return;
-    }
-
-    if (!totalStudentsInput || parseInt(totalStudentsInput) <= 0) {
-      alert('❌ Please enter the total number of students (must be greater than 0)');
-      return;
-    }
-
     // Create empty student rows based on total students input
-    const studentCount = parseInt(totalStudentsInput);
+    const studentCount = totalStudentsInput ? parseInt(totalStudentsInput) : 0;
     const students = [];
     
     console.log(`📊 Creating ${studentCount} empty student rows`);
@@ -279,15 +269,24 @@ function initializeStudentManagement() {
       const courseCodeRow = ['Course Code', '', ''];
       courses.forEach(course => {
         courseCodeRow.push(course.courseCode);
-        courseCodeRow.push(''); // Empty cell for SEE column
+        // Only add empty cell for SEE if not a Project course
+        if (course.courseType !== 'Project') {
+          courseCodeRow.push(''); // Empty cell for SEE column
+        }
       });
       resultData.push(courseCodeRow);
       
-      // Row 6: Column Headers (S.N., USN, NAME, CIE, SEE for each course)
+      // Row 6: Column Headers (S.N., USN, NAME, CIE, SEE for each course or just SEE for Project)
       const headerRow = ['S.N.', 'USN', 'NAME'];
-      courses.forEach(() => {
-        headerRow.push('CIE');
-        headerRow.push('SEE');
+      courses.forEach((course) => {
+        if (course.courseType === 'Project') {
+          // For Project courses, only add SEE column
+          headerRow.push('SEE');
+        } else {
+          // For other courses, add both CIE and SEE
+          headerRow.push('CIE');
+          headerRow.push('SEE');
+        }
       });
       resultData.push(headerRow);
       
@@ -295,9 +294,15 @@ function initializeStudentManagement() {
       students.forEach((student, idx) => {
         const row = [idx + 1, student.usn, student.name];
         // Add empty CIE and SEE cells for each course
-        courses.forEach(() => {
-          row.push(''); // CIE
-          row.push(''); // SEE
+        courses.forEach((course) => {
+          if (course.courseType === 'Project') {
+            // For Project courses, only add SEE cell
+            row.push(''); // SEE
+          } else {
+            // For other courses, add both CIE and SEE cells
+            row.push(''); // CIE
+            row.push(''); // SEE
+          }
         });
         resultData.push(row);
       });
@@ -312,14 +317,18 @@ function initializeStudentManagement() {
         courseData.push(['S.No', 'Course Code', 'Course Title', 'Staff Incharge', 'Course Type', 'MAX CIE', 'MIN CIE', 'MAX SEE', 'MIN SEE', 'Total MAX', 'Total MIN']);
         
         courses.forEach((c, idx) => {
+          // For Project courses, set CIE values to N/A or empty
+          const maxCIE = c.courseType === 'Project' ? 'N/A' : c.maxCIE;
+          const minCIE = c.courseType === 'Project' ? 'N/A' : c.minCIE;
+          
           courseData.push([
             idx + 1,
             c.courseCode,
             c.courseTitle,
             c.staffIncharge,
             c.courseType,
-            c.maxCIE,
-            c.minCIE,
+            maxCIE,
+            minCIE,
             c.maxSEE,
             c.minSEE,
             c.totalMax,
