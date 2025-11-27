@@ -56,6 +56,37 @@ function analyzeExcelFile(fileBuffer) {
   
   console.log('📈 Total rows:', jsonData.length);
   
+  // Read Course Details sheet if it exists to get course types
+  const courseTypes = {};
+  if (workbook.SheetNames.includes('Course Details')) {
+    console.log('📚 Reading Course Details sheet...');
+    const courseSheet = workbook.Sheets['Course Details'];
+    const courseData = XLSX.utils.sheet_to_json(courseSheet, { header: 1, defval: '' });
+    
+    // Find header row and course type column
+    for (let i = 0; i < courseData.length; i++) {
+      const row = courseData[i];
+      const rowStr = row.join('|').toLowerCase();
+      
+      if (rowStr.includes('course code') && rowStr.includes('course type')) {
+        // Found header row, now read course data
+        for (let j = i + 1; j < courseData.length; j++) {
+          const dataRow = courseData[j];
+          const courseCode = String(dataRow[1] || '').trim(); // Column B - Course Code
+          const courseType = String(dataRow[4] || '').trim(); // Column E - Course Type
+          
+          if (courseCode && courseType) {
+            courseTypes[courseCode] = courseType;
+            console.log(`   Course ${courseCode}: Type = ${courseType}`);
+          }
+        }
+        break;
+      }
+    }
+  }
+  
+  console.log('📋 Course Types:', courseTypes);
+  
   // Extract header information (Academic Year, Branch, Semester)
   let academicYear = '';
   let branch = '';
@@ -103,13 +134,16 @@ function analyzeExcelFile(fileBuffer) {
     
     if (firstCell === 'course code') {
       console.log('✅ Found Course Code row at index', i);
-      // Extract course codes from this row (every other cell starting from index 3)
-      for (let j = 3; j < row.length; j += 2) {
+      console.log('Full row:', row);
+      
+      // Extract course codes starting from column 3
+      // Don't skip any columns - just collect all non-empty values
+      for (let j = 3; j < row.length; j++) {
         const code = String(row[j] || '').trim();
-        if (code && code.length > 0) {
+        if (code && code.length > 0 && !code.toLowerCase().includes('course')) {
           courseCodes.push(code);
-          courseNames.push(code); // Use code as name for now
-          console.log(`📚 Found course code: ${code}`);
+          courseNames.push(code);
+          console.log(`📚 Found course code at column ${j}: ${code}`);
         }
       }
       break;
@@ -172,43 +206,87 @@ function analyzeExcelFile(fileBuffer) {
     throw new Error('No valid student data found in Excel file');
   }
   
-  // Find CIE and SEE columns for each subject
-  const subjectColumns = [];
+  console.log('\n🔍 HEADER ROW ANALYSIS:');
+  console.log('Headers array:', headers);
+  console.log('Number of headers:', headers.length);
+  
+  // Build subject pairs based on course types
   const subjectPairs = [];
+  let currentColIndex = 3; // Start after S.N., USN, NAME
   
-  // Find all CIE and SEE column INDICES (not names, since names repeat)
-  for (let i = 0; i < headers.length; i++) {
-    const header = headers[i].toLowerCase();
-    if (header === 'cie' || header === 'see') {
-      subjectColumns.push(i); // Store the INDEX, not the header name
-    }
-  }
+  console.log('\n🏗️ BUILDING SUBJECT PAIRS:');
+  console.log(`Starting column index: ${currentColIndex}`);
+  console.log(`Total course codes found: ${courseCodes.length}`);
+  console.log(`Course types mapping:`, courseTypes);
   
-  console.log('📊 Found CIE/SEE column indices:', subjectColumns);
+  // New approach: Map columns by looking at the header row structure
+  console.log('\n🔍 Analyzing header structure:');
+  let headerIndex = 3; // Start after S.N., USN, NAME
   
-  // Pair CIE and SEE columns by index
-  for (let i = 0; i < subjectColumns.length; i += 2) {
-    if (i + 1 < subjectColumns.length) {
-      const cieColIndex = subjectColumns[i];
-      const seeColIndex = subjectColumns[i + 1];
-      const subjectIndex = Math.floor(i / 2);
-      const courseCode = courseCodes[subjectIndex] || `Subject ${subjectIndex + 1}`;
-      const courseName = courseNames[subjectIndex] || courseCode;
-      
+  courseCodes.forEach((courseCode, subjectIndex) => {
+    const courseType = courseTypes[courseCode] || '';
+    const isProject = courseType === 'Project';
+    
+    console.log(`\n📚 Processing Course ${subjectIndex + 1}/${courseCodes.length}: ${courseCode}`);
+    console.log(`   Type: ${courseType || 'Not specified'}`);
+    console.log(`   Is Project: ${isProject}`);
+    console.log(`   Looking for columns starting at index: ${headerIndex}`);
+    
+    // Look at the actual header row to determine column structure
+    // The header row should have CIE, SEE or just SEE for projects
+    const nextHeader = headers[headerIndex]?.toLowerCase() || '';
+    const nextNextHeader = headers[headerIndex + 1]?.toLowerCase() || '';
+    
+    console.log(`   Header at ${headerIndex}: "${headers[headerIndex]}"`);
+    console.log(`   Header at ${headerIndex + 1}: "${headers[headerIndex + 1]}"`);
+    
+    if (isProject || nextHeader === 'see') {
+      // Project course or SEE-only course - only one column
+      console.log(`   ✅ Project/SEE-only course - SEE at column ${headerIndex}`);
       subjectPairs.push({
         courseCode: courseCode,
-        courseName: courseName,
-        cieColumnIndex: cieColIndex,  // Store index
-        seeColumnIndex: seeColIndex   // Store index
+        courseName: courseCode,
+        cieColumnIndex: null,
+        seeColumnIndex: headerIndex,
+        isProject: true
       });
+      headerIndex += 1; // Move to next column
+    } else if (nextHeader === 'cie' && nextNextHeader === 'see') {
+      // Regular course with both CIE and SEE
+      console.log(`   ✅ Regular course - CIE at ${headerIndex}, SEE at ${headerIndex + 1}`);
+      subjectPairs.push({
+        courseCode: courseCode,
+        courseName: courseCode,
+        cieColumnIndex: headerIndex,
+        seeColumnIndex: headerIndex + 1,
+        isProject: false
+      });
+      headerIndex += 2; // Move past both columns
+    } else {
+      // Fallback - assume regular course
+      console.log(`   ⚠️ Fallback - assuming regular course structure`);
+      subjectPairs.push({
+        courseCode: courseCode,
+        courseName: courseCode,
+        cieColumnIndex: headerIndex,
+        seeColumnIndex: headerIndex + 1,
+        isProject: false
+      });
+      headerIndex += 2;
     }
-  }
+    console.log(`   Next header index will be: ${headerIndex}`);
+  });
   
-  console.log('📚 Subject pairs:', subjectPairs.length);
+  console.log('\n✅ FINAL SUBJECT PAIRS SUMMARY:');
+  console.log(`Total subject pairs created: ${subjectPairs.length}`);
   
   // Log subject pair details
   subjectPairs.forEach((sp, idx) => {
-    console.log(`📖 Subject ${idx + 1}: ${sp.courseCode} - CIE col index: ${sp.cieColumnIndex}, SEE col index: ${sp.seeColumnIndex}`);
+    if (sp.isProject) {
+      console.log(`📖 ${idx + 1}. ${sp.courseCode} (Project) - SEE column: ${sp.seeColumnIndex}, Header: "${headers[sp.seeColumnIndex]}"`);
+    } else {
+      console.log(`📖 ${idx + 1}. ${sp.courseCode} - CIE column: ${sp.cieColumnIndex} ("${headers[sp.cieColumnIndex]}"), SEE column: ${sp.seeColumnIndex} ("${headers[sp.seeColumnIndex]}")`);
+    }
   });
   
   // Calculate statistics for each subject
@@ -217,28 +295,44 @@ function analyzeExcelFile(fileBuffer) {
   
   subjectPairs.forEach((subject, idx) => {
     console.log(`\n📊 Processing subject ${idx + 1}: ${subject.courseCode}`);
-    console.log(`   Looking for CIE in column index: ${subject.cieColumnIndex}`);
-    console.log(`   Looking for SEE in column index: ${subject.seeColumnIndex}`);
     
-    const cieMarks = studentData.map((s, i) => {
-      const val = parseFloat(s._rawRow[subject.cieColumnIndex]) || 0;
-      if (i === 0) console.log(`   First student CIE value: "${s._rawRow[subject.cieColumnIndex]}" -> ${val}`);
-      return val;
-    });
-    const seeMarks = studentData.map((s, i) => {
-      const val = parseFloat(s._rawRow[subject.seeColumnIndex]) || 0;
-      if (i === 0) console.log(`   First student SEE value: "${s._rawRow[subject.seeColumnIndex]}" -> ${val}`);
-      return val;
-    });
+    let cieMarks, seeMarks, totalMarks;
+    
+    if (subject.isProject) {
+      // Project courses only have SEE marks
+      console.log(`   Project course - using only SEE from column index: ${subject.seeColumnIndex}`);
+      
+      cieMarks = studentData.map(() => 0); // No CIE for projects
+      seeMarks = studentData.map((s, i) => {
+        const val = parseFloat(s._rawRow[subject.seeColumnIndex]) || 0;
+        if (i === 0) console.log(`   First student SEE value: "${s._rawRow[subject.seeColumnIndex]}" -> ${val}`);
+        return val;
+      });
+      totalMarks = seeMarks; // Total = SEE only for projects
+    } else {
+      // Regular courses have both CIE and SEE
+      console.log(`   Looking for CIE in column index: ${subject.cieColumnIndex}`);
+      console.log(`   Looking for SEE in column index: ${subject.seeColumnIndex}`);
+      
+      cieMarks = studentData.map((s, i) => {
+        const val = parseFloat(s._rawRow[subject.cieColumnIndex]) || 0;
+        if (i === 0) console.log(`   First student CIE value: "${s._rawRow[subject.cieColumnIndex]}" -> ${val}`);
+        return val;
+      });
+      seeMarks = studentData.map((s, i) => {
+        const val = parseFloat(s._rawRow[subject.seeColumnIndex]) || 0;
+        if (i === 0) console.log(`   First student SEE value: "${s._rawRow[subject.seeColumnIndex]}" -> ${val}`);
+        return val;
+      });
+      totalMarks = studentData.map(student => {
+        const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+        const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
+        return cie + see;
+      });
+    }
     
     console.log(`   All CIE marks:`, cieMarks);
     console.log(`   All SEE marks:`, seeMarks);
-    
-    const totalMarks = studentData.map(student => {
-      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
-      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
-      return cie + see;
-    });
     
     const validTotalMarks = totalMarks.filter(m => m > 0);
     const validCIE = cieMarks.filter(m => m > 0);
@@ -287,10 +381,17 @@ function analyzeExcelFile(fileBuffer) {
   const passedStudents = studentData.filter(student => {
     let allPassed = true;
     subjectPairs.forEach(subject => {
-      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
-      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
-      const total = cie + see;
-      if (total < 40 || see < 18) allPassed = false; // Need 40 total and 18 in SEE
+      if (subject.isProject) {
+        // For projects, only check SEE (no CIE)
+        const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
+        if (see < 40) allPassed = false; // Need 40 in SEE for projects
+      } else {
+        // For regular courses, check both CIE and SEE
+        const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+        const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
+        const total = cie + see;
+        if (total < 40 || see < 18) allPassed = false; // Need 40 total and 18 in SEE
+      }
     });
     return allPassed;
   }).length;
@@ -313,21 +414,42 @@ function analyzeExcelFile(fileBuffer) {
   // Transform students data
   const students = studentData.map((student, index) => {
     const marks = subjectPairs.map(subject => {
-      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
-      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
-      return cie + see;
+      if (subject.isProject) {
+        // For projects, only SEE marks
+        const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
+        return see;
+      } else {
+        // For regular courses, CIE + SEE
+        const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+        const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
+        return cie + see;
+      }
     });
     
     // Create subjects array with CIE/SEE breakdown for each subject
     const subjects = subjectPairs.map(subject => {
-      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
-      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
-      return {
-        cie: cie,
-        see: see,
-        total: cie + see,
-        courseCode: subject.courseCode
-      };
+      if (subject.isProject) {
+        // For projects, only SEE
+        const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
+        return {
+          cie: 'N/A', // No CIE for projects
+          see: see,
+          total: see,
+          courseCode: subject.courseCode,
+          isProject: true
+        };
+      } else {
+        // For regular courses
+        const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+        const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
+        return {
+          cie: cie,
+          see: see,
+          total: cie + see,
+          courseCode: subject.courseCode,
+          isProject: false
+        };
+      }
     });
     
     const total = marks.reduce((a, b) => a + b, 0);
@@ -336,10 +458,17 @@ function analyzeExcelFile(fileBuffer) {
     // Check if passed (all subjects >= 40 and SEE >= 18)
     let passed = true;
     subjectPairs.forEach(subject => {
-      const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
-      const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
-      const total = cie + see;
-      if (total < 40 || see < 18) passed = false;
+      if (subject.isProject) {
+        // For projects, only check SEE
+        const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
+        if (see < 40) passed = false; // Need 40 in SEE for projects
+      } else {
+        // For regular courses, check both CIE and SEE
+        const cie = parseFloat(student._rawRow[subject.cieColumnIndex]) || 0;
+        const see = parseFloat(student._rawRow[subject.seeColumnIndex]) || 0;
+        const total = cie + see;
+        if (total < 40 || see < 18) passed = false;
+      }
     });
     
     // Calculate grade based on percentage
@@ -408,6 +537,10 @@ function analyzeExcelFile(fileBuffer) {
     subjectNames: subjectPairs.map(s => s.courseCode),
     courseCodes: courseCodes,
     courseNames: courseNames,
+    courseTypes: subjectPairs.map(s => ({
+      courseCode: s.courseCode,
+      isProject: s.isProject || false
+    })),
     summary: {
       overallAvg: Math.round(overallAvg * 100) / 100,
       overallHigh: overallHigh,
