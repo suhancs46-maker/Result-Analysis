@@ -123,32 +123,11 @@
     <div class="newtemplate">
         <h2 style="font-weight: 800;">Download Template:</h2>
         <form action="" id="searchForm">
-           <div class="form-group">
-        <label for="academicYear">Academic Year:</label>
-        <input type="text" id="academicYear" name="academicYear" placeholder="Enter academic year">
-      </div>
-            <br><br>
             <div class="form-group">
-            <label for="branch">Branch:</label>
-            <input type="text" id="branch" name="branch" placeholder="Enter branch">
-        </div>
-            <br><br>
-            <div class="form-group" id="semester">
-            <label for="semester">Semester:</label>
-            <!-- <input type="text" id="semester" name="semester" placeholder="Enter semester" required> -->
-            <select id="semester" name="semester">
-                <option value="" disabled selected>Select semester</option>
-                <option value="1">1st Semester</option>
-                <option value="2">2nd Semester</option>
-                <option value="3">3rd Semester</option>
-                <option value="4">4th Semester</option>
-                <option value="5">5th Semester</option>
-                <option value="6">6th Semester</option>
-                <option value="7">7th Semester</option>
-                <option value="8">8th Semester</option>
-            </select>
-        </div>
-            <br><br>
+                <label for="searchInput">Search Template:</label>
+                <input type="text" id="searchInput" name="searchInput" placeholder="Search by academic year, branch, or semester" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+            </div>
+            <br>
             <div class="form-group">
                 <button type="button" onclick="searchTemplates()" style="background: #0078D7; color: white; padding: 10px 30px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">SEARCH</button>
                 <button type="button" onclick="clearSearch()" style="background: #6c757d; color: white; padding: 10px 30px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 10px;">CLEAR</button>
@@ -329,28 +308,112 @@
         
         // Search templates
         function searchTemplates() {
-            const academicYear = document.getElementById('academicYear').value.trim();
-            const branch = document.getElementById('branch').value.trim();
-            const semester = document.getElementById('semester').value;
+            const searchInput = document.getElementById('searchInput').value.trim().toLowerCase();
             
-            if (!academicYear && !branch && !semester) {
-                alert('Please enter at least one search criterion (Academic Year, Branch, or Semester)');
+            if (!searchInput) {
+                alert('Please enter a search term');
                 return;
             }
             
-            const filterCriteria = {};
-            if (academicYear) filterCriteria.academicYear = academicYear;
-            if (branch) filterCriteria.branch = branch;
-            if (semester) filterCriteria.semester = semester;
+            const templates = JSON.parse(localStorage.getItem('excelTemplates') || '[]');
             
-            loadTemplates(filterCriteria);
+            // Separate matching and non-matching templates
+            const matchingTemplates = [];
+            const nonMatchingTemplates = [];
+            
+            templates.forEach(template => {
+                const searchText = `${template.academicYear} ${template.branch} ${template.semester}`.toLowerCase();
+                if (searchText.includes(searchInput)) {
+                    matchingTemplates.push(template);
+                } else {
+                    nonMatchingTemplates.push(template);
+                }
+            });
+            
+            // Display matching templates first with green background
+            displayTemplates(matchingTemplates, nonMatchingTemplates);
+        }
+        
+        // Display templates with matching ones highlighted
+        function displayTemplates(matchingTemplates, nonMatchingTemplates) {
+            const tbody = document.getElementById('templateTableBody');
+            tbody.innerHTML = '';
+            
+            let serialNumber = 1;
+            
+            // Display matching templates with green background
+            matchingTemplates.forEach(template => {
+                const row = document.createElement('tr');
+                row.style.backgroundColor = '#90EE90'; // Light green
+                
+                row.innerHTML = `
+                    <td style="text-align: center;">${serialNumber++}</td>
+                    <td>
+                        <strong>${template.name}</strong><br>
+                        <small style="color: #555;">
+                            ${template.academicYear} | ${template.branch} | Sem ${template.semester}<br>
+                            Created: ${template.createdAt}
+                        </small>
+                    </td>
+                    <td>
+                        <table class="action-table" border="1">
+                            <tr>
+                                <td class="download">
+                                    <button onclick="downloadTemplate(${template.id})">DOWNLOAD</button>
+                                </td>
+                                <td class="edit">
+                                    <button onclick="editTemplate(${template.id})" style="background: #28a745; color: white;">EDIT</button>
+                                </td>
+                                <td class="delete">
+                                    <button onclick="deleteTemplate(${template.id})">DELETE</button>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // Display non-matching templates normally
+            nonMatchingTemplates.forEach(template => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td style="text-align: center;">${serialNumber++}</td>
+                    <td>
+                        <strong>${template.name}</strong><br>
+                        <small style="color: #555;">
+                            ${template.academicYear} | ${template.branch} | Sem ${template.semester}<br>
+                            Created: ${template.createdAt}
+                        </small>
+                    </td>
+                    <td>
+                        <table class="action-table" border="1">
+                            <tr>
+                                <td class="download">
+                                    <button onclick="downloadTemplate(${template.id})">DOWNLOAD</button>
+                                </td>
+                                <td class="edit">
+                                    <button onclick="editTemplate(${template.id})" style="background: #28a745; color: white;">EDIT</button>
+                                </td>
+                                <td class="delete">
+                                    <button onclick="deleteTemplate(${template.id})">DELETE</button>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            if (matchingTemplates.length === 0 && nonMatchingTemplates.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px;">No templates found</td></tr>';
+            }
         }
         
         // Clear search and show all templates
         function clearSearch() {
-            document.getElementById('academicYear').value = '';
-            document.getElementById('branch').value = '';
-            document.getElementById('semester').value = '';
+            document.getElementById('searchInput').value = '';
             loadTemplates();
         }
         
@@ -551,6 +614,10 @@
 
      <footer>
     <span class="copy">Copyright ©️ 2025.All rights reserved. Developed by under Skill Lab @E&C, KVGCE</span>
+    <br>
+    <span class="dpdBy"> Developed By: 
+      <a href="https://www.linkedin.com/in/basavaraju-r-k-055843300?utm_source=share_via&utm_content=profile&utm_medium=member_android" target="_blank" style="color: #0077b5; text-decoration: none;">Basavaraju R K</a>, 
+      <a href="https://www.linkedin.com/in/suhan-cs-2bb003301?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=ios_app" target="_blank" style="color: #0077b5; text-decoration: none;">Suhan C S</a>
   </footer>
 </body>
 </html>

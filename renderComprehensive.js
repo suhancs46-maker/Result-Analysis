@@ -5,6 +5,11 @@ function renderComprehensiveAnalysis(data) {
         return;
     }
 
+    // Store analysis data globally for Excel export
+    if (typeof window !== 'undefined') {
+        window.currentAnalysisData = data;
+    }
+
     const resultDiv = document.querySelector('.resultAnalysis');
     resultDiv.style.display = 'block';
     resultDiv.style.visibility = 'visible';

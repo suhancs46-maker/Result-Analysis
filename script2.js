@@ -6,14 +6,20 @@
 let excelData = [];
 let resultChartInstance = null;
 let selectedFile = null; // file chosen by user for server upload
+let currentAnalysisData = null; // Store current analysis data for Excel export
 
 // Wait until DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     const fileInput = document.getElementById("fileInput");
     const analyzeBtn = document.getElementById("analyzeBtn");
+    const saveBtn = document.getElementById("saveBtn");
 
     if (fileInput) fileInput.addEventListener("change", handleFile, false);
     if (analyzeBtn) analyzeBtn.addEventListener("click", analyzeData);
+    if (saveBtn) saveBtn.addEventListener("click", saveAnalysisToExcel);
+    
+    // Load and display saved student-wise results if available
+    loadSavedStudentResults();
 });
 
 // ============================
@@ -291,6 +297,9 @@ function renderAnalysisFromServer(data) {
         return;
     }
     
+    // Store analysis data globally for Excel export
+    currentAnalysisData = data;
+    
     console.log('Rendering comprehensive analysis data:', data);
     
     // Handle different response formats
@@ -445,5 +454,556 @@ function renderAnalysisFromServer(data) {
                 }
             }
         });
+    }
+}
+
+// ============================
+// Save Analysis to Excel
+// ============================
+function saveAnalysisToExcel() {
+    // Use either currentAnalysisData or window.currentAnalysisData
+    const data = currentAnalysisData || window.currentAnalysisData;
+    
+    if (!data || !data.success) {
+        alert('No analysis data available. Please analyze a file first.');
+        return;
+    }
+    
+    console.log('Downloading analysis data as Excel:', data);
+    
+    try {
+        // Create a new workbook with student-wise results only
+        const wb = XLSX.utils.book_new();
+        
+        // Extract data from analysis
+        const { students, academicYear, branch, semester, courseTypes } = data;
+        
+        // Sheet: Student-wise Results (Complete Details)
+        const studentHeaders = ['S.N.', 'USN', 'Name'];
+        
+        // Add subject headers with CIE/SEE subheaders
+        const subHeaderRow = ['', '', '']; // Empty cells for S.N., USN, Name
+        
+        if (students && students.length > 0 && students[0].subjects) {
+            students[0].subjects.forEach((subj, idx) => {
+                const courseType = courseTypes?.[idx] || {};
+                studentHeaders.push(subj.name); // Course code as main header
+                
+                if (courseType.isProject) {
+                    studentHeaders.push(''); // Empty for colspan effect
+                    subHeaderRow.push('SEE');
+                    subHeaderRow.push('Total');
+                } else {
+                    studentHeaders.push(''); // Empty cells for colspan
+                    studentHeaders.push(''); 
+                    subHeaderRow.push('CIE');
+                    subHeaderRow.push('SEE');
+                    subHeaderRow.push('Total');
+                }
+            });
+        }
+        
+        studentHeaders.push('% Marks', 'Result', 'Grade');
+        subHeaderRow.push('', '', ''); // Empty for these columns
+        
+        const studentData = [studentHeaders, subHeaderRow];
+        
+        // Add student rows
+        students.forEach((student, index) => {
+            const row = [
+                index + 1, // Serial number
+                student.usn,
+                student.name
+            ];
+            
+            // Add subject marks (CIE, SEE, Total for each subject)
+            student.subjects.forEach((subj, idx) => {
+                const courseType = courseTypes?.[idx] || {};
+                if (courseType.isProject) {
+                    row.push(subj.see || 0);
+                    row.push(subj.total || 0);
+                } else {
+                    row.push(subj.cie || 0);
+                    row.push(subj.see || 0);
+                    row.push(subj.total || 0);
+                }
+            });
+            
+            row.push(
+                student.percentage + '%' || '0%',
+                student.result || '-',
+                student.grade || '-'
+            );
+            
+            studentData.push(row);
+        });
+        
+        const wsStudents = XLSX.utils.aoa_to_sheet(studentData);
+        
+        // Add some styling - merge cells for course headers
+        const merge = [];
+        let colIndex = 3; // Start after S.N., USN, Name
+        if (students && students.length > 0 && students[0].subjects) {
+            students[0].subjects.forEach((subj, idx) => {
+                const courseType = courseTypes?.[idx] || {};
+                const numCols = courseType.isProject ? 2 : 3; // SEE+Total=2 or CIE+SEE+Total=3
+                
+                // Merge course code header across CIE/SEE/Total columns
+                merge.push({
+                    s: { r: 0, c: colIndex },
+                    e: { r: 0, c: colIndex + numCols - 1 }
+                });
+                
+                colIndex += numCols;
+            });
+        }
+        
+        wsStudents['!merges'] = merge;
+        
+        // Set column widths
+        const colWidths = [
+            { wch: 5 },  // S.N.
+            { wch: 15 }, // USN
+            { wch: 25 }  // Name
+        ];
+        
+        if (students && students.length > 0 && students[0].subjects) {
+            students[0].subjects.forEach((subj, idx) => {
+                const courseType = courseTypes?.[idx] || {};
+                if (courseType.isProject) {
+                    colWidths.push({ wch: 8 }); // SEE
+                    colWidths.push({ wch: 8 }); // Total
+                } else {
+                    colWidths.push({ wch: 8 }); // CIE
+                    colWidths.push({ wch: 8 }); // SEE
+                    colWidths.push({ wch: 8 }); // Total
+                }
+            });
+        }
+        
+        colWidths.push({ wch: 10 }); // % Marks
+        colWidths.push({ wch: 10 }); // Result
+        colWidths.push({ wch: 8 });  // Grade
+        
+        wsStudents['!cols'] = colWidths;
+        
+        XLSX.utils.book_append_sheet(wb, wsStudents, 'Student-wise Results');
+        
+        // Save to localStorage for permanent display on result analysis page
+        const timestamp = Date.now();
+        const savedData = {
+            id: timestamp,
+            students: students,
+            courseTypes: courseTypes,
+            academicYear: academicYear,
+            branch: branch,
+            semester: semester,
+            totalStudents: students.length,
+            createdAt: new Date().toLocaleString('en-IN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            })
+        };
+        
+        // Get existing saved results
+        let savedResults = JSON.parse(localStorage.getItem('savedStudentResults') || '[]');
+        
+        // Ensure it's an array
+        if (!Array.isArray(savedResults)) {
+            savedResults = [];
+        }
+        
+        // Add new result to the list
+        savedResults.push(savedData);
+        
+        // Save back to localStorage
+        localStorage.setItem('savedStudentResults', JSON.stringify(savedResults));
+        
+        // Display the saved results list
+        displaySavedResultsList();
+        
+        console.log('✅ Analysis saved to result analysis page');
+        
+        // Show success message
+        const successMsg = document.createElement('div');
+        successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 10000; font-weight: bold;';
+        successMsg.innerHTML = `✅ Student-wise results saved successfully!`;
+        document.body.appendChild(successMsg);
+        
+        setTimeout(() => {
+            successMsg.remove();
+        }, 3000);
+        
+    } catch (error) {
+        console.error('Error saving analysis:', error);
+        alert('Error saving analysis: ' + error.message);
+    }
+}
+
+// ============================
+// Display Saved Results List
+// ============================
+function displaySavedResultsList() {
+    // Get saved results from localStorage
+    let savedResults = localStorage.getItem('savedStudentResults');
+    
+    // Handle old format (single object) or invalid data
+    try {
+        savedResults = JSON.parse(savedResults);
+        
+        // If it's an object (old format), convert to array
+        if (savedResults && !Array.isArray(savedResults)) {
+            // Old format was a single object, wrap it in an array
+            savedResults = [savedResults];
+            // Update localStorage to new format
+            localStorage.setItem('savedStudentResults', JSON.stringify(savedResults));
+        }
+        
+        // If null or undefined, initialize as empty array
+        if (!savedResults) {
+            savedResults = [];
+        }
+    } catch (error) {
+        console.error('Error parsing saved results:', error);
+        savedResults = [];
+    }
+    
+    if (savedResults.length === 0) {
+        return;
+    }
+    
+    // Remove existing saved results section if any
+    const existingSection = document.querySelector('#savedResultsSection');
+    if (existingSection) {
+        existingSection.remove();
+    }
+    
+    const resultDiv = document.querySelector('.resultAnalysis');
+    
+    // Build the saved results list HTML
+    let html = `
+        <div id="savedResultsSection" style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h3 style="color: #0078D7; margin-bottom: 20px; text-align: center;">📚 Saved Student Results</h3>
+            <div style="background: white; border-radius: 8px; padding: 15px;">`;
+    
+    // Display each saved result as a line item
+    savedResults.forEach((result, index) => {
+        const resultNumber = index + 1;
+        html += `
+            <div style="padding: 15px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; background: white; display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <div style="font-weight: bold; color: #0078D7; font-size: 16px; margin-bottom: 5px;">
+                        ${resultNumber}. ${result.academicYear || 'N/A'} | ${result.branch || 'N/A'} | Semester ${result.semester || 'N/A'}
+                    </div>
+                    <div style="font-size: 14px; color: #666;">
+                        Total Students: ${result.totalStudents} | Created: ${result.createdAt}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="viewSavedResult(${result.id})" style="padding: 8px 16px; background: #0078D7; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                        VIEW
+                    </button>
+                    <button onclick="downloadSavedResult(${result.id})" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                        DOWNLOAD
+                    </button>
+                    <button onclick="deleteSavedResult(${result.id})" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                        DELETE
+                    </button>
+                </div>
+            </div>`;
+    });
+    
+    html += `
+            </div>
+        </div>`;
+    
+    // Append to the result div
+    resultDiv.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================
+// View Saved Result
+// ============================
+function viewSavedResult(id) {
+    let savedResults = JSON.parse(localStorage.getItem('savedStudentResults') || '[]');
+    
+    // Ensure it's an array
+    if (!Array.isArray(savedResults)) {
+        savedResults = [];
+    }
+    
+    const result = savedResults.find(r => r.id === id);
+    
+    if (!result) {
+        alert('Result not found!');
+        return;
+    }
+    
+    // Display the student-wise results table
+    displayStudentWiseResults(result.students, result.courseTypes);
+    
+    // Scroll to the table
+    setTimeout(() => {
+        document.querySelector('#studentWiseSection')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+}
+
+// ============================
+// Download Saved Result
+// ============================
+function downloadSavedResult(id) {
+    let savedResults = JSON.parse(localStorage.getItem('savedStudentResults') || '[]');
+    
+    // Ensure it's an array
+    if (!Array.isArray(savedResults)) {
+        savedResults = [];
+    }
+    
+    const result = savedResults.find(r => r.id === id);
+    
+    if (!result) {
+        alert('Result not found!');
+        return;
+    }
+    
+    try {
+        // Create Excel workbook
+        const wb = XLSX.utils.book_new();
+        const { students, courseTypes, academicYear, branch, semester } = result;
+        
+        // Create student-wise results sheet
+        const studentHeaders = ['S.N.', 'USN', 'Name'];
+        const subHeaderRow = ['', '', ''];
+        
+        if (students && students.length > 0 && students[0].subjects) {
+            students[0].subjects.forEach((subj, idx) => {
+                const courseType = courseTypes?.[idx] || {};
+                studentHeaders.push(subj.name);
+                
+                if (courseType.isProject) {
+                    studentHeaders.push('');
+                    subHeaderRow.push('SEE');
+                    subHeaderRow.push('Total');
+                } else {
+                    studentHeaders.push('');
+                    studentHeaders.push('');
+                    subHeaderRow.push('CIE');
+                    subHeaderRow.push('SEE');
+                    subHeaderRow.push('Total');
+                }
+            });
+        }
+        
+        studentHeaders.push('% Marks', 'Result', 'Grade');
+        subHeaderRow.push('', '', '');
+        
+        const studentData = [studentHeaders, subHeaderRow];
+        
+        students.forEach((student, index) => {
+            const row = [index + 1, student.usn, student.name];
+            
+            student.subjects.forEach((subj, idx) => {
+                const courseType = courseTypes?.[idx] || {};
+                if (courseType.isProject) {
+                    row.push(subj.see || 0);
+                    row.push(subj.total || 0);
+                } else {
+                    row.push(subj.cie || 0);
+                    row.push(subj.see || 0);
+                    row.push(subj.total || 0);
+                }
+            });
+            
+            row.push(student.percentage + '%', student.result, student.grade);
+            studentData.push(row);
+        });
+        
+        const ws = XLSX.utils.aoa_to_sheet(studentData);
+        XLSX.utils.book_append_sheet(wb, ws, 'Student-wise Results');
+        
+        // Download
+        const filename = `Analysis_${academicYear}_${branch}_Sem${semester}_${id}.xlsx`;
+        XLSX.writeFile(wb, filename);
+        
+        console.log('✅ Downloaded:', filename);
+    } catch (error) {
+        console.error('Error downloading result:', error);
+        alert('Error downloading: ' + error.message);
+    }
+}
+
+// ============================
+// Delete Saved Result
+// ============================
+function deleteSavedResult(id) {
+    if (!confirm('Are you sure you want to delete this saved result?')) {
+        return;
+    }
+    
+    let savedResults = JSON.parse(localStorage.getItem('savedStudentResults') || '[]');
+    
+    // Ensure it's an array
+    if (!Array.isArray(savedResults)) {
+        savedResults = [];
+    }
+    savedResults = savedResults.filter(r => r.id !== id);
+    
+    localStorage.setItem('savedStudentResults', JSON.stringify(savedResults));
+    
+    // Refresh the list
+    displaySavedResultsList();
+    
+    // Remove the student-wise table if it was showing this result
+    const studentSection = document.querySelector('#studentWiseSection');
+    if (studentSection) {
+        studentSection.remove();
+    }
+    
+    console.log('✅ Deleted result:', id);
+}
+
+// ============================
+// Display Student-wise Results on Page
+// ============================
+function displayStudentWiseResults(students, courseTypes) {
+    if (!students || students.length === 0) {
+        return;
+    }
+    
+    // Remove any existing student-wise results section
+    const existingSection = document.querySelector('#studentWiseSection');
+    if (existingSection) {
+        existingSection.remove();
+    }
+    
+    // Create a new section for student-wise results
+    const resultDiv = document.querySelector('.resultAnalysis');
+    
+    // Build the table HTML
+    let html = `
+        <div id="studentWiseSection" style="margin-top: 40px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #0078D7; margin: 0;">📋 Student-wise Results</h3>
+                <button onclick="closeStudentResults()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    CLOSE
+                </button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background: #0078D7; color: white;">
+                            <th rowspan="2" style="padding: 10px; border: 1px solid #ddd; text-align: center;">S.N.</th>
+                            <th rowspan="2" style="padding: 10px; border: 1px solid #ddd; text-align: center;">USN</th>
+                            <th rowspan="2" style="padding: 10px; border: 1px solid #ddd; text-align: center;">Name</th>`;
+    
+    // Add subject headers
+    if (students[0].subjects) {
+        students[0].subjects.forEach((subj, idx) => {
+            const courseType = courseTypes?.[idx] || {};
+            const colspan = courseType.isProject ? 2 : 3;
+            html += `<th colspan="${colspan}" style="padding: 10px; border: 1px solid #ddd; text-align: center;">${subj.name}</th>`;
+        });
+    }
+    
+    html += `
+                            <th rowspan="2" style="padding: 10px; border: 1px solid #ddd; text-align: center;">% Marks</th>
+                            <th rowspan="2" style="padding: 10px; border: 1px solid #ddd; text-align: center;">Result</th>
+                            <th rowspan="2" style="padding: 10px; border: 1px solid #ddd; text-align: center;">Grade</th>
+                        </tr>
+                        <tr style="background: #0078D7; color: white;">`;
+    
+    // Add CIE/SEE/Total subheaders
+    if (students[0].subjects) {
+        students[0].subjects.forEach((subj, idx) => {
+            const courseType = courseTypes?.[idx] || {};
+            if (courseType.isProject) {
+                html += `
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">SEE</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">Total</th>`;
+            } else {
+                html += `
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">CIE</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">SEE</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">Total</th>`;
+            }
+        });
+    }
+    
+    html += `
+                        </tr>
+                    </thead>
+                    <tbody>`;
+    
+    // Add student rows
+    students.forEach((student, index) => {
+        // Determine row color based on rank or result
+        let rowColor = 'white';
+        if (student.rank === 1) rowColor = '#FFD700'; // Gold
+        else if (student.rank === 2) rowColor = '#C0C0C0'; // Silver
+        else if (student.rank === 3) rowColor = '#8B4513'; // Brown
+        else if (student.result === 'FAIL') rowColor = '#ffcccc'; // Light red
+        
+        html += `
+            <tr style="background: ${rowColor};">
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${index + 1}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${student.usn}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: left;">${student.name}</td>`;
+        
+        // Add subject marks
+        student.subjects.forEach((subj, idx) => {
+            const courseType = courseTypes?.[idx] || {};
+            if (courseType.isProject) {
+                const seeColor = (subj.see || 0) < 40 ? 'red' : 'black';
+                html += `
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center; color: ${seeColor};">${subj.see || 0}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${subj.total || 0}</td>`;
+            } else {
+                const cieColor = (subj.cie || 0) < 20 ? 'red' : 'black';
+                const seeColor = (subj.see || 0) < 20 ? 'red' : 'black';
+                html += `
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center; color: ${cieColor};">${subj.cie || 0}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center; color: ${seeColor};">${subj.see || 0}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${subj.total || 0}</td>`;
+            }
+        });
+        
+        const resultColor = student.result === 'FAIL' ? 'red' : 'green';
+        html += `
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: bold;">${student.percentage}%</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: ${resultColor};">${student.result}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: bold;">${student.grade}</td>
+            </tr>`;
+    });
+    
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    
+    // Append to the result div
+    resultDiv.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================
+// Load Saved Student Results from localStorage
+// ============================
+function loadSavedStudentResults() {
+    // Load and display the saved results list
+    displaySavedResultsList();
+}
+
+// ============================
+// Close Student Results Table
+// ============================
+function closeStudentResults() {
+    const studentSection = document.querySelector('#studentWiseSection');
+    if (studentSection) {
+        studentSection.remove();
     }
 }
