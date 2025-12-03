@@ -474,10 +474,14 @@ function analyzeExcelFile(fileBuffer) {
     // Calculate grade based on percentage
     const percentage = Math.round((total / (marks.length * 100)) * 100 * 100) / 100;
     let grade = 'F';
-    if (percentage >= 70) grade = 'FCD';
-    else if (percentage >= 60) grade = 'FC';
-    else if (percentage >= 50) grade = 'SC';
-    else if (percentage >= 40) grade = 'P';
+    
+    // Only assign grade if student passed, otherwise grade is 'F'
+    if (passed) {
+      if (percentage >= 70) grade = 'FCD';
+      else if (percentage >= 60) grade = 'FC';
+      else if (percentage >= 50) grade = 'SC';
+      else if (percentage >= 40) grade = 'P';
+    }
     
     return {
       sno: index + 1,
@@ -494,27 +498,35 @@ function analyzeExcelFile(fileBuffer) {
     };
   });
   
-  // Sort students by percentage to assign ranks
-  const sortedStudents = [...students].sort((a, b) => b.percentage - a.percentage);
+  // Sort only PASSING students by percentage to assign ranks
+  const passingStudents = students.filter(s => s.result === 'PASS');
+  const sortedPassingStudents = passingStudents.sort((a, b) => b.percentage - a.percentage);
   
-  // Assign ranks and colors
+  // Assign ranks and colors only to passing students
   students.forEach(student => {
-    const rank = sortedStudents.findIndex(s => s.usn === student.usn) + 1;
-    student.rank = rank;
-    
-    // Assign rank colors
-    if (rank === 1) {
-      student.rankColor = '#FFD700'; // Gold
-      student.rankLabel = '🥇 1st';
-    } else if (rank === 2) {
-      student.rankColor = '#C0C0C0'; // Silver
-      student.rankLabel = '🥈 2nd';
-    } else if (rank === 3) {
-      student.rankColor = '#CD7F32'; // Bronze
-      student.rankLabel = '🥉 3rd';
+    if (student.result === 'PASS') {
+      const rank = sortedPassingStudents.findIndex(s => s.usn === student.usn) + 1;
+      student.rank = rank;
+      
+      // Assign rank colors
+      if (rank === 1) {
+        student.rankColor = '#FFD700'; // Gold
+        student.rankLabel = '🥇 1st';
+      } else if (rank === 2) {
+        student.rankColor = '#C0C0C0'; // Silver
+        student.rankLabel = '🥈 2nd';
+      } else if (rank === 3) {
+        student.rankColor = '#8B4513'; // Brown
+        student.rankLabel = '🥉 3rd';
+      } else {
+        student.rankColor = 'transparent';
+        student.rankLabel = rank.toString();
+      }
     } else {
+      // Failed students get no rank - completely excluded from ranking
+      student.rank = null;
       student.rankColor = 'transparent';
-      student.rankLabel = rank;
+      student.rankLabel = '-';
     }
   });
   
